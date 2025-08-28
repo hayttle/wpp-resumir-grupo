@@ -1,26 +1,114 @@
-@import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@plugin "tailwindcss-animate";
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@custom-variant dark (&:is(.dark *));
 
-@media (prefers-color-scheme: dark) {
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    
+    /* Cores do WhatsApp - PRD */
+    --primary: 142 76% 36%; /* #25D366 - Verde principal */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 199 100% 29%; /* #128C7E - Verde escuro */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 60 9% 98%; /* #ECE5DD - Cinza claro */
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 60 9% 98%; /* #ECE5DD - Cinza claro */
+    --accent-foreground: 0 0% 9%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 60 9% 98%; /* #ECE5DD - Cinza claro */
+    --input: 60 9% 98%; /* #ECE5DD - Cinza claro */
+    --ring: 142 76% 36%; /* #25D366 - Verde principal */
+    
+    --radius: 0.5rem;
+    
+    /* Cores adicionais do WhatsApp */
+    --whatsapp-text: 0 0% 3.9%; /* #111B21 - Preto/Grafite */
+    --whatsapp-text-secondary: 0 0% 67%; /* #AAAAAA - Cinza médio */
+    --whatsapp-white: 0 0% 100%; /* #FFFFFF - Branco */
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    
+    /* Cores do WhatsApp no modo escuro */
+    --primary: 142 76% 36%; /* #25D366 - Verde principal */
+    --primary-foreground: 0 0% 9%;
+    --secondary: 199 100% 29%; /* #128C7E - Verde escuro */
+    --secondary-foreground: 0 0% 98%;
+    
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 142 76% 36%; /* #25D366 - Verde principal */
+    
+    /* Cores adicionais do WhatsApp no modo escuro */
+    --whatsapp-text: 0 0% 98%; /* Branco no modo escuro */
+    --whatsapp-text-secondary: 0 0% 80%; /* Cinza mais claro no modo escuro */
+    --whatsapp-white: 0 0% 3.9%; /* Preto no modo escuro */
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    background-color: #25D366;
+    color: white;
+    transition: background-color 0.2s;
+  }
+
+  .btn-primary:hover {
+    background-color: #128C7E;
+  }
+
+  .btn-secondary {
+    background-color: #128C7E;
+    color: white;
+    transition: background-color 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background-color: #25D366;
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 0.5rem;
+    border: 1px solid #ECE5DD;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
 }
