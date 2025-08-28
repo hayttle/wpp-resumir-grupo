@@ -7,6 +7,20 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
 const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL
 
+// Função para mapear status da Evolution API para nosso sistema
+function mapEvolutionStatus(evolutionStatus: string): string {
+  switch (evolutionStatus?.toLowerCase()) {
+    case 'open':
+      return 'open'
+    case 'close':
+      return 'close'
+    case 'connecting':
+      return 'connecting'
+    default:
+      return 'close'
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // 1. Autenticar usuário
@@ -112,7 +126,7 @@ export async function POST(request: NextRequest) {
     const instanceData = {
       user_id: user.id,
       instance_name: instanceName,
-      status: evolutionData.instance?.status || 'close',
+      status: mapEvolutionStatus(evolutionData.instance?.status) || 'error',
       qr_code: evolutionData.qrcode?.base64 || null,
       evolution_instance_id: evolutionData.instance?.instanceName || instanceName
     }
@@ -191,7 +205,7 @@ export async function PUT(request: NextRequest) {
     // 3. Obter dados do request
     const { action } = await request.json()
     
-    if (action !== 'connect') {
+    if (action !== 'connect' && action !== 'updateStatus') {
       return NextResponse.json(
         { error: 'Ação inválida' },
         { status: 400 }
@@ -213,6 +227,73 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Se for updateStatus, buscar status atual da Evolution API
+    if (action === 'updateStatus') {
+      console.log('🔍 Atualizando status da instância:', instance.instance_name)
+      
+      try {
+        const statusResponse = await fetch(
+          `${EVOLUTION_API_URL}/instance/connectionState/${instance.instance_name}`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': EVOLUTION_API_KEY
+            }
+          }
+        )
+
+        if (!statusResponse.ok) {
+          const errorData = await statusResponse.json()
+          console.error('❌ Erro ao buscar status na Evolution API:', errorData)
+          return NextResponse.json(
+            { error: `Falha ao buscar status: ${errorData.message || 'Erro desconhecido'}` },
+            { status: 500 }
+          )
+        }
+
+        const statusData = await statusResponse.json()
+        console.log('✅ Evolution API: Status obtido:', statusData)
+
+        // Atualizar status no banco de dados
+        const updateData = {
+          status: mapEvolutionStatus(statusData.state) || 'error',
+          updated_at: new Date().toISOString()
+        }
+
+        console.log('🔍 Debug - Dados para atualização de status:', updateData)
+
+        const { data: updatedInstance, error: updateError } = await supabase
+          .from('instances')
+          .update(updateData)
+          .eq('id', instance.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('❌ Erro ao atualizar status no banco:', updateError)
+          return NextResponse.json(
+            { error: 'Falha ao atualizar status no banco' },
+            { status: 500 }
+          )
+        }
+
+        console.log('✅ Banco de dados: Status atualizado:', updatedInstance)
+        
+        return NextResponse.json({
+          success: true,
+          instance: updatedInstance
+        })
+
+      } catch (error) {
+        console.error('❌ Erro interno ao atualizar status:', error)
+        return NextResponse.json(
+          { error: 'Erro interno do servidor' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Se for connect, continuar com a lógica existente
     console.log('🔧 Conectando instância:', instance.instance_name)
 
     // 5. Conectar instância na Evolution API

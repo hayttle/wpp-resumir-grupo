@@ -1,1 +1,1 @@
-export { InstanceManager } from './InstanceManager'
+export { default as InstanceManager } from './InstanceManager'

@@ -155,6 +155,37 @@ export class InstanceService {
     }
   }
 
+  // Atualizar status da instância via Evolution API
+  static async updateInstanceStatus(): Promise<Instance | null> {
+    try {
+      console.log('🔧 InstanceService: Atualizando status da instância...')
+      
+      const response = await fetch('/api/instances', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateStatus'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Erro ao atualizar status:', errorData)
+        throw new Error(errorData.error || 'Falha ao atualizar status')
+      }
+
+      const result = await response.json()
+      console.log('✅ InstanceService: Status atualizado:', result.instance)
+      
+      return result.instance
+    } catch (error) {
+      console.error('❌ InstanceService: Erro ao atualizar status:', error)
+      throw error
+    }
+  }
+
   // Gerar nome da instância (primeiro nome + telefone)
   static generateInstanceName(firstName: string, phoneNumber: string): string {
     // Limpar telefone (remover caracteres especiais)

@@ -37,7 +37,7 @@ export interface Instance {
   user_id: string
   instance_name: string
   qr_code?: string
-  status: 'connected' | 'disconnected' | 'connecting' | 'error'
+  status: 'open' | 'close' | 'connecting'
   evolution_instance_id?: string
   created_at: string
   updated_at?: string

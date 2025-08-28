@@ -1,5 +1,5 @@
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
-import { InstanceManager } from '@/components/instances/InstanceManager'
+import InstanceManager from '@/components/instances/InstanceManager'
 
 export default function InstancesPage() {
   return (

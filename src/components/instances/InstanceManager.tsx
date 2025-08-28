@@ -1,17 +1,20 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { QrCode, RefreshCw, Trash2, Wifi } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { RefreshCw, Wifi, WifiOff, Smartphone, QrCode } from 'lucide-react'
 import { InstanceService } from '@/lib/services'
 import { useAuth } from '@/contexts/AuthContext'
+import { Instance } from '@/types/database'
 
-export function InstanceManager() {
+export default function InstanceManager() {
   const { user } = useAuth()
-  const [instance, setInstance] = useState<any>(null)
+  const [instance, setInstance] = useState<Instance | null>(null)
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
 
   useEffect(() => {
     if (user) {
@@ -22,10 +25,10 @@ export function InstanceManager() {
   const loadUserInstance = async () => {
     try {
       setLoading(true)
-      const instanceData = await InstanceService.getCurrentUserInstance()
-      setInstance(instanceData)
+      const userInstance = await InstanceService.getCurrentUserInstance()
+      setInstance(userInstance)
     } catch (error) {
-      console.error('Erro ao carregar instância:', error)
+      console.error('❌ Erro ao carregar instância:', error)
     } finally {
       setLoading(false)
     }
@@ -48,89 +51,126 @@ export function InstanceManager() {
     }
   }
 
-  const deleteInstance = async () => {
-    // TODO: Implementar exclusão de instância
-    console.log('🗑️ Excluir instância - implementar')
+  const updateInstanceStatus = async () => {
+    try {
+      setUpdatingStatus(true)
+      console.log('🔍 Atualizando status da instância...')
+
+      const updatedInstance = await InstanceService.updateInstanceStatus()
+      setInstance(updatedInstance)
+
+      console.log('✅ Status atualizado:', updatedInstance)
+    } catch (error) {
+      console.error('❌ Erro ao atualizar status:', error)
+      alert('Erro ao atualizar status. Tente novamente.')
+    } finally {
+      setUpdatingStatus(false)
+    }
   }
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-600">Carregando instância...</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     )
   }
 
   if (!instance) {
     return (
       <Card>
-        <CardContent className="p-8">
-          <div className="text-center">
-            <QrCode className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Nenhuma instância encontrada
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Você ainda não possui uma instância WhatsApp configurada.
-            </p>
-            <p className="text-sm text-gray-500">
-              As instâncias são criadas automaticamente durante o cadastro.
-            </p>
-          </div>
-        </CardContent>
+        <CardHeader>
+          <CardTitle>Gerenciar Instância WhatsApp</CardTitle>
+          <CardDescription>
+            Nenhuma instância encontrada. Crie uma instância primeiro.
+          </CardDescription>
+        </CardHeader>
       </Card>
     )
   }
 
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'open':
+        return { label: 'Conectado', icon: Wifi, color: 'bg-green-100 text-green-800' }
+      case 'connecting':
+        return { label: 'Conectando...', icon: RefreshCw, color: 'bg-yellow-100 text-yellow-800' }
+      case 'close':
+        return { label: 'Desconectado', icon: WifiOff, color: 'bg-red-100 text-red-800' }
+      default:
+        return { label: status, icon: Smartphone, color: 'bg-gray-100 text-gray-800' }
+    }
+  }
+
+  const statusInfo = getStatusInfo(instance.status)
+  const StatusIcon = statusInfo.icon
+
   return (
     <div className="space-y-6">
-      {/* Informações da Instância */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Wifi className="h-5 w-5 mr-2" />
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
             Instância WhatsApp
           </CardTitle>
           <CardDescription>
-            Gerencie sua conexão WhatsApp e monitore o status
+            Gerencie sua instância do WhatsApp
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-700">Nome da Instância</label>
-              <p className="text-gray-900">{instance.instance_name}</p>
+          {/* Status e Informações */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <StatusIcon className="h-5 w-5" />
+              <div>
+                <p className="font-medium">Status</p>
+                <Badge className={statusInfo.color}>
+                  {statusInfo.label}
+                </Badge>
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Status</label>
-              <p className={`font-medium ${instance.status === 'open' ? 'text-green-600' :
-                  instance.status === 'connecting' ? 'text-yellow-600' :
-                    'text-red-600'
-                }`}>
-                {instance.status === 'open' ? 'Conectado' :
-                  instance.status === 'connecting' ? 'Conectando' :
-                    'Desconectado'}
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">ID Evolution</label>
-              <p className="text-gray-900 text-sm">{instance.evolution_instance_id}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">Criada em</label>
-              <p className="text-gray-900 text-sm">
-                {new Date(instance.created_at).toLocaleDateString('pt-BR')}
-              </p>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">Instância</p>
+              <p className="font-mono text-sm">{instance.instance_name}</p>
             </div>
           </div>
 
-          {/* Ações */}
-          <div className="flex flex-wrap gap-3 pt-4">
+          {/* QR Code */}
+          {instance.qr_code && instance.status === 'connecting' && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-2">
+                Escaneie o QR Code com seu WhatsApp
+              </p>
+              <div className="inline-block border-2 border-dashed border-gray-300 rounded-lg p-2">
+                <img
+                  src={instance.qr_code}
+                  alt="QR Code WhatsApp"
+                  className="w-64 h-64 mx-auto"
+                  onError={(e) => {
+                    console.error('❌ Erro ao carregar imagem QR Code:', e)
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* WhatsApp Conectado */}
+          {instance.status === 'open' && (
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 text-green-800">
+                  <Wifi className="h-6 w-6" />
+                  <div>
+                    <p className="font-semibold">WhatsApp Conectado!</p>
+                    <p className="text-sm">Sua instância está funcionando perfeitamente.</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Botões de Ação */}
+          <div className="flex gap-3">
             <Button
               onClick={connectInstance}
               disabled={connecting}
@@ -142,87 +182,17 @@ export function InstanceManager() {
             </Button>
 
             <Button
-              onClick={loadUserInstance}
+              onClick={updateInstanceStatus}
+              disabled={updatingStatus}
               variant="outline"
               className="flex items-center"
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar Status
-            </Button>
-
-            <Button
-              onClick={deleteInstance}
-              variant="destructive"
-              className="flex items-center"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Excluir Instância
+              <RefreshCw className={`h-4 w-4 mr-2 ${updatingStatus ? 'animate-spin' : ''}`} />
+              {updatingStatus ? 'Atualizando...' : 'Atualizar Status'}
             </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* QR Code para Conexão */}
-      {instance.qr_code && instance.status !== 'open' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <QrCode className="h-5 w-5 mr-2" />
-              Conectar WhatsApp
-            </CardTitle>
-            <CardDescription>
-              Escaneie este QR Code com o WhatsApp para conectar sua instância
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              {/* Debug: Mostrar conteúdo do QR Code */}
-              <div className="mb-4 p-3 bg-gray-100 rounded text-xs text-left">
-                <p><strong>Debug QR Code:</strong></p>
-                <p><strong>Tipo:</strong> {typeof instance.qr_code}</p>
-                <p><strong>Comprimento:</strong> {instance.qr_code?.length || 0}</p>
-                <p><strong>Primeiros 100 chars:</strong> {instance.qr_code?.substring(0, 100)}...</p>
-                <p><strong>É base64:</strong> {instance.qr_code?.startsWith('data:image') ? 'SIM' : 'NÃO'}</p>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg border-2 border-dashed border-gray-300 inline-block">
-                <img
-                  src={instance.qr_code}
-                  alt="QR Code WhatsApp"
-                  className="w-64 h-64 mx-auto"
-                  onError={(e) => {
-                    console.error('❌ Erro ao carregar imagem QR Code:', e)
-                    e.currentTarget.style.display = 'none'
-                  }}
-                  onLoad={() => console.log('✅ QR Code carregado com sucesso')}
-                />
-              </div>
-              <p className="text-sm text-gray-600 mt-4">
-                Abra o WhatsApp no seu celular → Menu → WhatsApp Web → Escaneie o código
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Status Conectado */}
-      {instance.status === 'open' && (
-        <Card className="border-green-200 bg-green-50">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Wifi className="h-8 w-8 text-green-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-green-900 mb-2">
-                WhatsApp Conectado!
-              </h3>
-              <p className="text-green-700">
-                Sua instância está conectada e funcionando perfeitamente.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }
