@@ -158,7 +158,7 @@ async function fetchAllGroups(instanceName: string, supabase: any, userId: strin
     console.log('🔍 Buscando grupos da instância:', instanceName)
     
     const groupsResponse = await fetch(
-      `${EVOLUTION_API_URL}/group/fetchAllGroups/${instanceName}`,
+      `${EVOLUTION_API_URL}/group/fetchAllGroups/${instanceName}?getParticipants=false`,
       {
         method: 'GET',
         headers: {
