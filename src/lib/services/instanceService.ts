@@ -186,6 +186,37 @@ export class InstanceService {
     }
   }
 
+  // Desconectar instância WhatsApp
+  static async disconnectInstance(): Promise<Instance | null> {
+    try {
+      console.log('🔧 InstanceService: Desconectando instância...')
+      
+      const response = await fetch('/api/instances', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'disconnect'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Erro ao desconectar instância:', errorData)
+        throw new Error(errorData.error || 'Falha ao desconectar instância')
+      }
+
+      const result = await response.json()
+      console.log('✅ InstanceService: Instância desconectada:', result.instance)
+      
+      return result.instance
+    } catch (error) {
+      console.error('❌ InstanceService: Erro ao desconectar instância:', error)
+      throw error
+    }
+  }
+
   // Gerar nome da instância (primeiro nome + telefone)
   static generateInstanceName(firstName: string, phoneNumber: string): string {
     // Limpar telefone (remover caracteres especiais)

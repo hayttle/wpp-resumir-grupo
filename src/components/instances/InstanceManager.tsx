@@ -84,6 +84,23 @@ export default function InstanceManager() {
     }
   }
 
+  const disconnectInstance = async () => {
+    try {
+      setConnecting(true)
+      console.log('🔌 Desconectando instância...')
+
+      const updatedInstance = await InstanceService.disconnectInstance()
+      setInstance(updatedInstance)
+
+      console.log('✅ Instância desconectada:', updatedInstance)
+    } catch (error) {
+      console.error('❌ Erro ao desconectar instância:', error)
+      alert('Erro ao desconectar instância. Tente novamente.')
+    } finally {
+      setConnecting(false)
+    }
+  }
+
   const updateInstanceStatus = async () => {
     try {
       setUpdatingStatus(true)
@@ -226,15 +243,29 @@ export default function InstanceManager() {
 
           {/* Botões de Ação */}
           <div className="flex gap-3">
-            <Button
-              onClick={connectInstance}
-              disabled={connecting}
-              variant="outline"
-              className="flex items-center"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${connecting ? 'animate-spin' : ''}`} />
-              {connecting ? 'Conectando...' : 'Conectar/Atualizar QR'}
-            </Button>
+            {instance.status === 'open' ? (
+              // Botão de Desconectar quando conectado
+              <Button
+                onClick={disconnectInstance}
+                disabled={connecting}
+                variant="destructive"
+                className="flex items-center"
+              >
+                <WifiOff className={`h-4 w-4 mr-2 ${connecting ? 'animate-spin' : ''}`} />
+                {connecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
+              </Button>
+            ) : (
+              // Botão de Conectar quando desconectado ou conectando
+              <Button
+                onClick={connectInstance}
+                disabled={connecting}
+                variant="outline"
+                className="flex items-center"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${connecting ? 'animate-spin' : ''}`} />
+                {connecting ? 'Conectando...' : 'Conectar/Atualizar QR'}
+              </Button>
+            )}
 
             <Button
               onClick={updateInstanceStatus}

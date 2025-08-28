@@ -205,7 +205,7 @@ export async function PUT(request: NextRequest) {
     // 3. Obter dados do request
     const { action } = await request.json()
     
-    if (action !== 'connect' && action !== 'updateStatus') {
+    if (action !== 'connect' && action !== 'updateStatus' && action !== 'disconnect') {
       return NextResponse.json(
         { error: 'Ação inválida' },
         { status: 400 }
@@ -297,6 +297,87 @@ export async function PUT(request: NextRequest) {
 
       } catch (error) {
         console.error('❌ Erro interno ao atualizar status:', error)
+        return NextResponse.json(
+          { error: 'Erro interno do servidor' },
+          { status: 500 }
+        )
+      }
+    }
+
+    // Se for disconnect, desconectar instância na Evolution API
+    if (action === 'disconnect') {
+      console.log('🔌 Desconectando instância:', instance.instance_name)
+      
+      try {
+        const disconnectResponse = await fetch(
+          `${EVOLUTION_API_URL}/instance/logout/${instance.instance_name}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'apikey': EVOLUTION_API_KEY
+            }
+          }
+        )
+
+        if (!disconnectResponse.ok) {
+          const errorData = await disconnectResponse.json()
+          console.error('❌ Erro ao desconectar instância na Evolution API:', errorData)
+          return NextResponse.json(
+            { error: `Falha ao desconectar instância: ${errorData.message || 'Erro desconhecido'}` },
+            { status: 500 }
+          )
+        }
+
+        const disconnectData = await disconnectResponse.json()
+        console.log('✅ Evolution API: Resposta de desconexão:', disconnectData)
+        console.log('🔍 Status da resposta:', disconnectData.status)
+        console.log('🔍 Erro da resposta:', disconnectData.error)
+        console.log('🔍 Mensagem da resposta:', disconnectData.response?.message)
+
+        // Verificar se a desconexão foi bem-sucedida
+        if (disconnectData.status === 'SUCCESS' && !disconnectData.error) {
+          console.log('✅ Desconexão bem-sucedida na Evolution API')
+          
+          // Atualizar status no banco de dados para 'close'
+          const updateData = {
+            status: 'close',
+            qr_code: null, // Limpar QR Code quando desconectado
+            updated_at: new Date().toISOString()
+          }
+
+          console.log('🔍 Debug - Dados para atualização de desconexão:', updateData)
+
+          const { data: updatedInstance, error: updateError } = await supabase
+            .from('instances')
+            .update(updateData)
+            .eq('id', instance.id)
+            .select()
+            .single()
+
+          if (updateError) {
+            console.error('❌ Erro ao atualizar instância no banco:', updateError)
+            return NextResponse.json(
+              { error: 'Falha ao atualizar instância no banco' },
+              { status: 500 }
+            )
+          }
+
+          console.log('✅ Banco de dados: Instância desconectada:', updatedInstance)
+          
+          return NextResponse.json({
+            success: true,
+            instance: updatedInstance
+          })
+        } else {
+          console.error('❌ Desconexão falhou na Evolution API:', disconnectData)
+          return NextResponse.json(
+            { error: `Falha na desconexão: ${disconnectData.response?.message || 'Erro desconhecido'}` },
+            { status: 500 }
+          )
+        }
+
+      } catch (error) {
+        console.error('❌ Erro interno ao desconectar instância:', error)
         return NextResponse.json(
           { error: 'Erro interno do servidor' },
           { status: 500 }
