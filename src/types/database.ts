@@ -54,6 +54,22 @@ export interface GroupSelection {
   updated_at?: string
 }
 
+// Tipo para grupos retornados pela Evolution API
+export interface WhatsAppGroup {
+  id: string
+  subject: string
+  subjectOwner: string
+  subjectTime: number
+  pictureUrl: string | null
+  size: number
+  creation: number
+  owner: string
+  desc: string
+  descId: string
+  restrict: boolean
+  announce: boolean
+}
+
 export interface Schedule {
   id: string
   group_selection_id: string
@@ -88,6 +104,7 @@ export type UserInsert = Omit<User, 'id' | 'created_at' | 'updated_at'>
 export type PlanInsert = Omit<Plan, 'id' | 'created_at' | 'updated_at'>
 export type SubscriptionInsert = Omit<Subscription, 'id' | 'created_at' | 'updated_at'>
 export type InstanceInsert = Omit<Instance, 'id' | 'created_at' | 'updated_at'>
+// Tipo para inserção de seleção de grupo
 export type GroupSelectionInsert = Omit<GroupSelection, 'id' | 'created_at' | 'updated_at'>
 export type ScheduleInsert = Omit<Schedule, 'id' | 'created_at' | 'updated_at'>
 export type MessageInsert = Omit<Message, 'id' | 'created_at'>
@@ -98,6 +115,7 @@ export type UserUpdate = Partial<Omit<User, 'id' | 'created_at'>>
 export type PlanUpdate = Partial<Omit<Plan, 'id' | 'created_at'>>
 export type SubscriptionUpdate = Partial<Omit<Subscription, 'id' | 'created_at'>>
 export type InstanceUpdate = Partial<Omit<Instance, 'id' | 'created_at'>>
+// Tipo para atualização de seleção de grupo
 export type GroupSelectionUpdate = Partial<Omit<GroupSelection, 'id' | 'created_at'>>
 export type ScheduleUpdate = Partial<Omit<Schedule, 'id' | 'created_at'>>
 export type MessageUpdate = Partial<Omit<Message, 'id' | 'created_at'>>
