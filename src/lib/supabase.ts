@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 // Verificar se as variáveis de ambiente estão definidas
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -10,7 +10,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Cliente para o browser com cookies automáticos
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -27,7 +28,7 @@ export const supabaseAdmin = (() => {
       throw new Error('Missing environment variable: SUPABASE_SERVICE_ROLE_KEY must be defined')
     }
     
-    return createClient(supabaseUrl, serviceRoleKey, {
+    return createBrowserClient(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false

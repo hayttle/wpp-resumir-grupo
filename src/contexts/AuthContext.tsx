@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { InstanceService } from '@/lib/services'
 
 interface AuthContextType {
   user: User | null
@@ -107,6 +108,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (insertError) {
           console.error('Erro ao criar perfil:', insertError)
+          return
+        }
+
+        // Criar instância automaticamente para novos usuários
+        if (user.user_metadata?.name && user.user_metadata?.phone_number) {
+          try {
+            const instanceName = InstanceService.generateInstanceName(
+              user.user_metadata.name,
+              user.user_metadata.phone_number
+            )
+
+            await InstanceService.createInstance(
+              user.id,
+              instanceName,
+              user.user_metadata.phone_number
+            )
+
+            console.log('✅ Instância criada automaticamente:', instanceName)
+          } catch (instanceError) {
+            console.error('❌ Erro ao criar instância:', instanceError)
+            // Não falhar o cadastro se a instância não puder ser criada
+          }
         }
       }
     } catch (error) {

@@ -108,7 +108,7 @@ CREATE TABLE instances (
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   instance_name VARCHAR(255) NOT NULL,
   qr_code TEXT,
-  status VARCHAR(20) DEFAULT 'disconnected' CHECK (status IN ('connected', 'disconnected', 'connecting', 'error')),
+  status VARCHAR(20) DEFAULT 'close' CHECK (status IN ('close', 'connecting', 'open')),
   evolution_instance_id VARCHAR(255),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -221,6 +221,44 @@ CREATE POLICY "Users can view own subscriptions" ON subscriptions
 -- Usuários podem inserir suas próprias assinaturas
 CREATE POLICY "Users can insert own subscriptions" ON subscriptions
   FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+```
+
+#### Políticas para `instances`:
+```sql
+-- Usuários podem ver apenas suas próprias instâncias
+CREATE POLICY "Users can view own instances" ON instances
+  FOR SELECT USING (auth.uid()::text = user_id::text);
+
+-- Usuários podem inserir suas próprias instâncias
+CREATE POLICY "Users can insert own instances" ON instances
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+-- Usuários podem atualizar suas próprias instâncias
+CREATE POLICY "Users can update own instances" ON instances
+  FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+-- Usuários podem deletar suas próprias instâncias
+CREATE POLICY "Users can delete own instances" ON instances
+  FOR DELETE USING (auth.uid()::text = user_id::text);
+```
+
+#### Políticas para `group_selections`:
+```sql
+-- Usuários podem ver apenas suas próprias seleções de grupo
+CREATE POLICY "Users can view own group selections" ON group_selections
+  FOR SELECT USING (auth.uid()::text = user_id::text);
+
+-- Usuários podem inserir suas próprias seleções de grupo
+CREATE POLICY "Users can insert own group selections" ON group_selections
+  FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+
+-- Usuários podem atualizar suas próprias seleções de grupo
+CREATE POLICY "Users can update own group selections" ON group_selections
+  FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+-- Usuários podem deletar suas próprias seleções de grupo
+CREATE POLICY "Users can delete own group selections" ON group_selections
+  FOR DELETE USING (auth.uid()::text = user_id::text);
 ```
 
 ### 6. Testar Conexão

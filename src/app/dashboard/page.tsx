@@ -120,6 +120,25 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+          {/* Debug Section */}
+          <Card className="border-whatsapp-background shadow-lg mb-8">
+            <CardHeader>
+              <CardTitle className="text-whatsapp-text">🔧 Debug e Desenvolvimento</CardTitle>
+              <CardDescription className="text-whatsapp-text-secondary">
+                Ferramentas para desenvolvimento e teste
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4">
+                <Link href="/debug-instances">
+                  <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50">
+                    Debug de Instâncias
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Recent Activity */}
           <Card className="border-whatsapp-background shadow-lg">
             <CardHeader>
