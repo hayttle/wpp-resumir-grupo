@@ -8,13 +8,9 @@ export async function GET(request: NextRequest) {
     
     // 1. Verificar todos os cookies recebidos
     const cookieStore = cookies()
-    const allCookies = cookieStore.getAll()
-    
-    console.log('🔧 Test Auth: Cookies recebidos:', allCookies.map(c => ({
+    console.log('🔧 Cookies recebidos:', cookieStore.getAll().map(c => ({
       name: c.name,
-      value: c.value.substring(0, 20) + '...',
-      path: c.path,
-      domain: c.domain
+      value: c.value.substring(0, 20) + '...'
     })))
     
     // 2. Tentar autenticar usuário
@@ -52,7 +48,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      cookies: allCookies.map(c => c.name),
+      cookies: cookieStore.getAll().map(c => c.name),
       user: user?.id || null,
       session: session?.user?.id || null,
       authError: authError?.message || null,

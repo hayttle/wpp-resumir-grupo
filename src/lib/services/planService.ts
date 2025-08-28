@@ -5,6 +5,11 @@ export class PlanService {
   // Criar novo plano (admin)
   static async createPlan(planData: PlanInsert): Promise<Plan | null> {
     try {
+      if (!supabaseAdmin) {
+        console.error('❌ supabaseAdmin não disponível')
+        return null
+      }
+
       const { data, error } = await supabaseAdmin
         .from('plans')
         .insert([planData])
@@ -26,7 +31,12 @@ export class PlanService {
   // Buscar plano por ID
   static async getPlanById(id: string): Promise<Plan | null> {
     try {
-      const { data, error } = await supabase
+      if (!supabaseAdmin) {
+        console.error('❌ supabaseAdmin não disponível')
+        return null
+      }
+
+      const { data, error } = await supabaseAdmin
         .from('plans')
         .select('*')
         .eq('id', id)
@@ -47,19 +57,24 @@ export class PlanService {
   // Listar todos os planos
   static async getAllPlans(): Promise<Plan[]> {
     try {
-      const { data, error } = await supabase
+      if (!supabaseAdmin) {
+        console.error('❌ supabaseAdmin não disponível')
+        return []
+      }
+
+      const { data, error } = await supabaseAdmin
         .from('plans')
         .select('*')
-        .order('price', { ascending: true })
+        .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Erro ao listar planos:', error)
+        console.error('Erro ao buscar planos:', error)
         return []
       }
 
       return data || []
     } catch (error) {
-      console.error('Erro ao listar planos:', error)
+      console.error('Erro ao buscar planos:', error)
       return []
     }
   }
@@ -67,6 +82,11 @@ export class PlanService {
   // Atualizar plano (admin)
   static async updatePlan(id: string, updates: PlanUpdate): Promise<Plan | null> {
     try {
+      if (!supabaseAdmin) {
+        console.error('❌ supabaseAdmin não disponível')
+        return null
+      }
+
       const { data, error } = await supabaseAdmin
         .from('plans')
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -89,6 +109,11 @@ export class PlanService {
   // Deletar plano (admin)
   static async deletePlan(id: string): Promise<boolean> {
     try {
+      if (!supabaseAdmin) {
+        console.error('❌ supabaseAdmin não disponível')
+        return false
+      }
+
       const { error } = await supabaseAdmin
         .from('plans')
         .delete()

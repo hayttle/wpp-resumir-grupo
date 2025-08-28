@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       instance_name: instanceName,
       status: evolutionData.instance?.status || 'close',
-      qr_code: evolutionData.qrcode?.code || null,
+      qr_code: evolutionData.qrcode?.base64 || null,
       evolution_instance_id: evolutionData.instance?.instanceName || instanceName
     }
 
@@ -137,6 +137,215 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       instance: newInstance
+    })
+
+  } catch (error) {
+    console.error('❌ Erro interno:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    // 1. Autenticar usuário
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll() {
+            // Não precisamos setar cookies aqui
+          }
+        }
+      }
+    )
+    
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+      console.error('❌ API Route PUT: Falha na autenticação:', authError)
+      return NextResponse.json(
+        { error: 'Não autorizado' },
+        { status: 401 }
+      )
+    }
+
+    console.log('✅ API Route PUT: Usuário autenticado:', user.id)
+
+    // 2. Verificar variáveis de ambiente
+    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+      console.error('❌ Variáveis de ambiente da Evolution API não configuradas')
+      return NextResponse.json(
+        { error: 'Configuração do servidor incompleta' },
+        { status: 500 }
+      )
+    }
+
+    // 3. Obter dados do request
+    const { action } = await request.json()
+    
+    if (action !== 'connect') {
+      return NextResponse.json(
+        { error: 'Ação inválida' },
+        { status: 400 }
+      )
+    }
+
+    // 4. Buscar instância do usuário
+    const { data: instance, error: instanceError } = await supabase
+      .from('instances')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (instanceError || !instance) {
+      console.error('❌ Erro ao buscar instância:', instanceError)
+      return NextResponse.json(
+        { error: 'Instância não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    console.log('🔧 Conectando instância:', instance.instance_name)
+
+    // 5. Conectar instância na Evolution API
+    const connectResponse = await fetch(
+      `${EVOLUTION_API_URL}/instance/connect/${instance.instance_name}`,
+      {
+        method: 'GET',
+        headers: {
+          'apikey': EVOLUTION_API_KEY
+        }
+      }
+    )
+
+    if (!connectResponse.ok) {
+      const errorData = await connectResponse.json()
+      console.error('❌ Erro ao conectar instância na Evolution API:', errorData)
+      return NextResponse.json(
+        { error: `Falha ao conectar instância: ${errorData.message || 'Erro desconhecido'}` },
+        { status: 500 }
+      )
+    }
+
+    const connectData = await connectResponse.json()
+    console.log('✅ Evolution API: Instância conectada:', connectData)
+    console.log('🔍 Debug - Estrutura completa da resposta:', JSON.stringify(connectData, null, 2))
+    console.log('🔍 Debug - qrcode field:', connectData.qrcode)
+    console.log('🔍 Debug - qrcode.base64:', connectData.qrcode?.base64)
+    console.log('🔍 Debug - qrcode.code:', connectData.qrcode?.code)
+    
+    // Logs adicionais para debug completo
+    console.log('🔍 Debug - Status da resposta:', connectResponse.status)
+    console.log('🔍 Debug - Headers da resposta:', Object.fromEntries(connectResponse.headers.entries()))
+    console.log('🔍 Debug - Tipo de resposta:', typeof connectData)
+    console.log('🔍 Debug - Chaves da resposta:', Object.keys(connectData))
+    console.log('🔍 Debug - Resposta bruta (string):', JSON.stringify(connectData))
+    
+    // Verificar se há campos inesperados
+    if (connectData.qr) {
+      console.log('🔍 Debug - Campo qr encontrado:', connectData.qr)
+    }
+    if (connectData.qrcode) {
+      console.log('🔍 Debug - Campo qrcode encontrado:', connectData.qrcode)
+    }
+    if (connectData.qrCode) {
+      console.log('🔍 Debug - Campo qrCode encontrado:', connectData.qrCode)
+    }
+    if (connectData.qr_code) {
+      console.log('🔍 Debug - Campo qr_code encontrado:', connectData.qr_code)
+    }
+    if (connectData.base64) {
+      console.log('🔍 Debug - Campo base64 encontrado (TAMANHO):', connectData.base64?.length || 0)
+      console.log('🔍 Debug - Campo base64 encontrado (INÍCIO):', connectData.base64?.substring(0, 50) + '...')
+    }
+
+    // 5.1. Se não retornou QR Code, tentar buscar separadamente
+    let qrCodeData = null
+    if (!connectData.qrcode?.base64) {
+      console.log('🔍 QR Code não retornado, tentando buscar separadamente...')
+      
+      try {
+        const qrResponse = await fetch(
+          `${EVOLUTION_API_URL}/instance/qrcode/${instance.instance_name}`,
+          {
+            method: 'GET',
+            headers: {
+              'apikey': EVOLUTION_API_KEY
+            }
+          }
+        )
+        
+        if (qrResponse.ok) {
+          qrCodeData = await qrResponse.json()
+          console.log('✅ QR Code obtido separadamente:', qrCodeData)
+          console.log('🔍 Debug QR Code - Estrutura completa:', JSON.stringify(qrCodeData, null, 2))
+          console.log('🔍 Debug QR Code - Chaves:', Object.keys(qrCodeData))
+          console.log('🔍 Debug QR Code - Tipo:', typeof qrCodeData)
+          
+          // Verificar campos do QR Code
+          if (qrCodeData.qrcode) {
+            console.log('🔍 Debug QR Code - qrcode field:', qrCodeData.qrcode)
+            console.log('🔍 Debug QR Code - qrcode.base64:', qrCodeData.qrcode?.base64)
+          }
+          if (qrCodeData.qr) {
+            console.log('🔍 Debug QR Code - qr field:', qrCodeData.qr)
+          }
+          if (qrCodeData.qrCode) {
+            console.log('🔍 Debug QR Code - qrCode field:', qrCodeData.qrCode)
+          }
+        } else {
+          console.log('⚠️ Não foi possível obter QR Code separadamente')
+          console.log('🔍 Debug QR Code - Status:', qrResponse.status)
+          console.log('🔍 Debug QR Code - Status Text:', qrResponse.statusText)
+          try {
+            const errorData = await qrResponse.json()
+            console.log('🔍 Debug QR Code - Erro:', errorData)
+          } catch (e) {
+            console.log('🔍 Debug QR Code - Sem corpo de erro')
+          }
+        }
+      } catch (qrError) {
+        console.log('⚠️ Erro ao buscar QR Code separadamente:', qrError)
+      }
+    }
+
+    // 6. Atualizar instância no banco de dados com novo QR Code
+    const updateData = {
+      qr_code: connectData.base64 || connectData.qrcode?.base64 || qrCodeData?.qrcode?.base64 || null,
+      status: 'connecting',
+      updated_at: new Date().toISOString()
+    }
+    
+    console.log('🔍 Debug - Dados para atualização:', updateData)
+
+    const { data: updatedInstance, error: updateError } = await supabase
+      .from('instances')
+      .update(updateData)
+      .eq('id', instance.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar instância no banco:', updateError)
+      return NextResponse.json(
+        { error: 'Falha ao atualizar instância no banco' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Banco de dados: Instância atualizada:', updatedInstance)
+    
+    return NextResponse.json({
+      success: true,
+      instance: updatedInstance
     })
 
   } catch (error) {

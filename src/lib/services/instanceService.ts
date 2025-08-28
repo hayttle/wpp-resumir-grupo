@@ -124,6 +124,37 @@ export class InstanceService {
     }
   }
 
+  // Conectar instância (obter novo QR Code)
+  static async connectInstance(): Promise<Instance | null> {
+    try {
+      console.log('🔧 InstanceService: Conectando instância...')
+      
+      const response = await fetch('/api/instances', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'connect'
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Erro ao conectar instância:', errorData)
+        throw new Error(errorData.error || 'Falha ao conectar instância')
+      }
+
+      const result = await response.json()
+      console.log('✅ InstanceService: Instância conectada:', result.instance)
+      
+      return result.instance
+    } catch (error) {
+      console.error('❌ InstanceService: Erro ao conectar instância:', error)
+      throw error
+    }
+  }
+
   // Gerar nome da instância (primeiro nome + telefone)
   static generateInstanceName(firstName: string, phoneNumber: string): string {
     // Limpar telefone (remover caracteres especiais)

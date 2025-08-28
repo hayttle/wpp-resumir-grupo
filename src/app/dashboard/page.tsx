@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
+import { Smartphone } from 'lucide-react'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -120,7 +121,30 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Debug Section */}
+          {/* Gerenciar Instâncias */}
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Smartphone className="h-5 w-5 mr-2" />
+                Gerenciar Instância WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Conecte e gerencie sua instância WhatsApp
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-600 mb-4">
+                Monitore o status da sua conexão, escaneie QR Codes e gerencie sua instância
+              </p>
+              <Link href="/instances">
+                <Button className="w-full">
+                  Gerenciar Instância
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Debug e Desenvolvimento */}
           <Card className="border-whatsapp-background shadow-lg mb-8">
             <CardHeader>
               <CardTitle className="text-whatsapp-text">🔧 Debug e Desenvolvimento</CardTitle>
