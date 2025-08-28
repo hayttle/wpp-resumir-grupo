@@ -25,10 +25,10 @@ export default function InstanceManager() {
   // Verificação automática de status quando estiver conectando
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null
-    
+
     if (instance?.status === 'connecting') {
       console.log('🔄 Iniciando verificação automática de status...')
-      
+
       intervalId = setInterval(async () => {
         console.log('🔄 Verificação automática de status...')
         try {
@@ -36,7 +36,7 @@ export default function InstanceManager() {
           if (updatedInstance && updatedInstance.status !== 'connecting') {
             console.log('🔄 Status mudou automaticamente:', updatedInstance.status)
             setInstance(updatedInstance)
-            
+
             if (updatedInstance.status === 'open') {
               console.log('🎉 WhatsApp conectado automaticamente!')
             }
@@ -46,7 +46,7 @@ export default function InstanceManager() {
         }
       }, 5000) // Verificar a cada 5 segundos
     }
-    
+
     return () => {
       if (intervalId) {
         console.log('🔄 Parando verificação automática de status...')
@@ -89,18 +89,18 @@ export default function InstanceManager() {
       setUpdatingStatus(true)
       console.log('🔍 Atualizando status da instância...')
       console.log('🔍 Status atual:', instance?.status)
-      
+
       const updatedInstance = await InstanceService.updateInstanceStatus()
       console.log('🔍 Instância retornada da API:', updatedInstance)
-      
+
       if (updatedInstance) {
         setInstance(updatedInstance)
         console.log('✅ Status atualizado no frontend:', updatedInstance.status)
-        
+
         // Verificar se o status mudou
         if (instance && instance.status !== updatedInstance.status) {
           console.log('🔄 Status mudou de', instance.status, 'para', updatedInstance.status)
-          
+
           if (updatedInstance.status === 'open') {
             console.log('🎉 WhatsApp conectado com sucesso!')
           } else if (updatedInstance.status === 'close') {
@@ -114,7 +114,7 @@ export default function InstanceManager() {
       } else {
         console.log('⚠️ Nenhuma instância retornada da API')
       }
-      
+
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error)
       alert('Erro ao atualizar status. Tente novamente.')

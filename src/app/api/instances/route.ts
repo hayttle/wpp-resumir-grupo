@@ -258,11 +258,12 @@ export async function PUT(request: NextRequest) {
 
         const statusData = await statusResponse.json()
         console.log('✅ Evolution API: Status obtido (RESPOSTA COMPLETA):', JSON.stringify(statusData, null, 2))
-        console.log('🔍 Campo "state" da resposta:', statusData.state)
-        console.log('🔍 Tipo do campo "state":', typeof statusData.state)
+        console.log('🔍 Campo "instance" da resposta:', statusData.instance)
+        console.log('🔍 Campo "instance.state" da resposta:', statusData.instance?.state)
+        console.log('🔍 Tipo do campo "instance.state":', typeof statusData.instance?.state)
 
         // Atualizar status no banco de dados
-        const mappedStatus = mapEvolutionStatus(statusData.state)
+        const mappedStatus = mapEvolutionStatus(statusData.instance?.state)
         console.log('🔍 Status mapeado:', mappedStatus)
         
         const updateData = {
