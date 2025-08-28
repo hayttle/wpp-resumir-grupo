@@ -131,6 +131,38 @@ export class GroupService {
     }
   }
 
+  // Remover seleção de grupo via API (método preferido)
+  static async removeGroupSelection(groupId: string): Promise<boolean> {
+    try {
+      console.log('🗑️ GroupService: Removendo seleção de grupo:', groupId)
+      
+      const response = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'removeGroupSelection',
+          groupSelection: { group_id: groupId }
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Erro ao remover seleção de grupo:', errorData)
+        throw new Error(errorData.error || 'Falha ao remover seleção de grupo')
+      }
+
+      const result = await response.json()
+      console.log('✅ GroupService: Seleção de grupo removida:', result)
+      
+      return true
+    } catch (error) {
+      console.error('❌ GroupService: Erro ao remover seleção de grupo:', error)
+      throw error
+    }
+  }
+
   // Verificar se grupo já foi selecionado
   static async isGroupAlreadySelected(groupId: string, userId: string): Promise<boolean> {
     try {

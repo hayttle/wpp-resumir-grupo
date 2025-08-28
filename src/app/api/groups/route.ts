@@ -76,6 +76,8 @@ export async function POST(request: NextRequest) {
       return await fetchAllGroups(instance.instance_name, supabase, user.id)
     } else if (action === 'saveGroupSelection') {
       return await saveGroupSelection(groupSelection, instance.id, user.id, supabase)
+    } else if (action === 'removeGroupSelection') {
+      return await removeGroupSelection(groupSelection, user.id, supabase)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -158,7 +160,7 @@ async function fetchAllGroups(instanceName: string, supabase: any, userId: strin
     console.log('🔍 Buscando grupos da instância:', instanceName)
     
     const groupsResponse = await fetch(
-      `${EVOLUTION_API_URL}/group/fetchAllGroups/${instanceName}`,
+      `${EVOLUTION_API_URL}/group/fetchAllGroups/${instanceName}?getParticipants=false`,
       {
         method: 'GET',
         headers: {
@@ -258,6 +260,43 @@ async function saveGroupSelection(groupSelection: any, instanceId: string, userI
 
   } catch (error) {
     console.error('❌ Erro interno ao salvar seleção de grupo:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// Função para remover seleção de grupo
+async function removeGroupSelection(groupSelection: any, userId: string, supabase: any) {
+  try {
+    console.log('🗑️ Removendo seleção de grupo:', groupSelection)
+
+    const { data: existingSelection, error: deleteError } = await supabase
+      .from('group_selections')
+      .delete()
+      .eq('group_id', groupSelection.group_id)
+      .eq('user_id', userId)
+      .select()
+      .single()
+
+    if (deleteError) {
+      console.error('❌ Erro ao remover seleção de grupo no banco:', deleteError)
+      return NextResponse.json(
+        { error: 'Falha ao remover seleção de grupo no banco' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Banco de dados: Seleção de grupo removida:', existingSelection)
+
+    return NextResponse.json({
+      success: true,
+      groupSelection: existingSelection
+    })
+
+  } catch (error) {
+    console.error('❌ Erro interno ao remover seleção de grupo:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

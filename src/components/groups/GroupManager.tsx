@@ -62,7 +62,7 @@ export default function GroupManager() {
     try {
       setFetchingGroups(true)
       console.log('🔍 Buscando grupos da instância:', instanceName)
-      
+
       const fetchedGroups = await GroupService.fetchAllGroups(instanceName)
       // Converter para GroupWithSelectionStatus
       const groupsWithStatus: GroupWithSelectionStatus[] = fetchedGroups.map(group => ({
@@ -70,7 +70,7 @@ export default function GroupManager() {
         isSelected: false
       }))
       setGroups(groupsWithStatus)
-      
+
       console.log('✅ Grupos buscados:', groupsWithStatus)
     } catch (error) {
       console.error('❌ Erro ao buscar grupos:', error)
@@ -83,7 +83,7 @@ export default function GroupManager() {
   const selectGroup = async (group: WhatsAppGroup) => {
     try {
       console.log('✅ Selecionando grupo:', group.subject)
-      
+
       const groupSelection = await GroupService.saveGroupSelection({
         user_id: user!.id,
         instance_id: '', // Será preenchido pelo backend
@@ -94,15 +94,15 @@ export default function GroupManager() {
 
       if (groupSelection) {
         // Atualizar lista de grupos com status de seleção
-        setGroups(prevGroups => 
-          prevGroups.map(g => 
+        setGroups(prevGroups =>
+          prevGroups.map(g =>
             g.id === group.id ? { ...g, isSelected: true } : g
           )
         )
 
         // Adicionar à lista de grupos selecionados
         setSelectedGroups(prev => [groupSelection, ...prev])
-        
+
         console.log('✅ Grupo selecionado com sucesso:', groupSelection)
       }
     } catch (error) {
@@ -112,6 +112,33 @@ export default function GroupManager() {
       } else {
         alert('Erro ao selecionar grupo. Tente novamente.')
       }
+    }
+  }
+
+  const deselectGroup = async (groupSelection: GroupSelection) => {
+    try {
+      console.log('❌ Desselecionando grupo:', groupSelection.group_name)
+
+      const success = await GroupService.removeGroupSelection(groupSelection.group_id)
+
+      if (success) {
+        // Remover da lista de grupos selecionados
+        setSelectedGroups(prev => prev.filter(gs => gs.id !== groupSelection.id))
+
+        // Atualizar lista de grupos com status de seleção
+        setGroups(prevGroups =>
+          prevGroups.map(g =>
+            g.id === groupSelection.group_id ? { ...g, isSelected: false } : g
+          )
+        )
+
+        console.log('✅ Grupo desselecionado com sucesso:', groupSelection.group_name)
+      } else {
+        alert('Erro ao desselecionar grupo. Tente novamente.')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao desselecionar grupo:', error)
+      alert('Erro ao desselecionar grupo. Tente novamente.')
     }
   }
 
@@ -183,8 +210,8 @@ export default function GroupManager() {
             <div className="text-sm text-muted-foreground">
               Instância: <span className="font-mono">{instanceName}</span>
             </div>
-            <Button 
-              onClick={fetchAllGroups} 
+            <Button
+              onClick={fetchAllGroups}
               disabled={fetchingGroups}
               className="flex items-center gap-2"
             >
@@ -207,8 +234,8 @@ export default function GroupManager() {
           <CardContent>
             <div className="space-y-4">
               {groups.map((group) => (
-                <div 
-                  key={group.id} 
+                <div
+                  key={group.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
                 >
                   <div className="flex-1">
@@ -270,8 +297,8 @@ export default function GroupManager() {
           <CardContent>
             <div className="space-y-3">
               {selectedGroups.map((selection) => (
-                <div 
-                  key={selection.id} 
+                <div
+                  key={selection.id}
                   className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
                 >
                   <div>
@@ -280,9 +307,19 @@ export default function GroupManager() {
                       Selecionado em {new Date(selection.created_at).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
-                  <Badge className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                    {selection.active ? 'Ativo' : 'Inativo'}
-                  </Badge>
+                  <div className="flex items-center gap-3">
+                    <Badge className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                      {selection.active ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                    <Button
+                      onClick={() => deselectGroup(selection)}
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    >
+                      Remover
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
