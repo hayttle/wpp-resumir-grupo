@@ -64,10 +64,10 @@ export default function GroupManager() {
       console.log('🔍 Buscando grupos da instância:', instanceName)
 
       const fetchedGroups = await GroupService.fetchAllGroups(instanceName)
-      // Converter para GroupWithSelectionStatus
+      // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
       const groupsWithStatus: GroupWithSelectionStatus[] = fetchedGroups.map(group => ({
         ...group,
-        isSelected: false
+        isSelected: selectedGroups.some(selection => selection.group_id === group.id)
       }))
       setGroups(groupsWithStatus)
 
@@ -249,11 +249,7 @@ export default function GroupManager() {
                       )}
                     </div>
                     <div className="text-sm text-muted-foreground mt-1">
-                      <span>ID: {group.id}</span>
-                      <span className="mx-2">•</span>
                       <span>{group.size} membros</span>
-                      <span className="mx-2">•</span>
-                      <span>Criado em {formatDate(group.creation)}</span>
                     </div>
                     {group.desc && (
                       <p className="text-sm text-muted-foreground mt-1">
