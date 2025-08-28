@@ -22,6 +22,39 @@ export default function InstanceManager() {
     }
   }, [user])
 
+  // Verificação automática de status quando estiver conectando
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+    
+    if (instance?.status === 'connecting') {
+      console.log('🔄 Iniciando verificação automática de status...')
+      
+      intervalId = setInterval(async () => {
+        console.log('🔄 Verificação automática de status...')
+        try {
+          const updatedInstance = await InstanceService.updateInstanceStatus()
+          if (updatedInstance && updatedInstance.status !== 'connecting') {
+            console.log('🔄 Status mudou automaticamente:', updatedInstance.status)
+            setInstance(updatedInstance)
+            
+            if (updatedInstance.status === 'open') {
+              console.log('🎉 WhatsApp conectado automaticamente!')
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erro na verificação automática:', error)
+        }
+      }, 5000) // Verificar a cada 5 segundos
+    }
+    
+    return () => {
+      if (intervalId) {
+        console.log('🔄 Parando verificação automática de status...')
+        clearInterval(intervalId)
+      }
+    }
+  }, [instance?.status])
+
   const loadUserInstance = async () => {
     try {
       setLoading(true)
@@ -55,11 +88,33 @@ export default function InstanceManager() {
     try {
       setUpdatingStatus(true)
       console.log('🔍 Atualizando status da instância...')
-
+      console.log('🔍 Status atual:', instance?.status)
+      
       const updatedInstance = await InstanceService.updateInstanceStatus()
-      setInstance(updatedInstance)
-
-      console.log('✅ Status atualizado:', updatedInstance)
+      console.log('🔍 Instância retornada da API:', updatedInstance)
+      
+      if (updatedInstance) {
+        setInstance(updatedInstance)
+        console.log('✅ Status atualizado no frontend:', updatedInstance.status)
+        
+        // Verificar se o status mudou
+        if (instance && instance.status !== updatedInstance.status) {
+          console.log('🔄 Status mudou de', instance.status, 'para', updatedInstance.status)
+          
+          if (updatedInstance.status === 'open') {
+            console.log('🎉 WhatsApp conectado com sucesso!')
+          } else if (updatedInstance.status === 'close') {
+            console.log('⚠️ WhatsApp desconectado')
+          } else if (updatedInstance.status === 'connecting') {
+            console.log('⏳ WhatsApp ainda está conectando...')
+          }
+        } else {
+          console.log('ℹ️ Status não mudou:', updatedInstance.status)
+        }
+      } else {
+        console.log('⚠️ Nenhuma instância retornada da API')
+      }
+      
     } catch (error) {
       console.error('❌ Erro ao atualizar status:', error)
       alert('Erro ao atualizar status. Tente novamente.')

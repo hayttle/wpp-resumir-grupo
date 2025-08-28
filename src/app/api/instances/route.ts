@@ -232,6 +232,8 @@ export async function PUT(request: NextRequest) {
       console.log('🔍 Atualizando status da instância:', instance.instance_name)
       
       try {
+        console.log('🔍 Fazendo requisição para:', `${EVOLUTION_API_URL}/instance/connectionState/${instance.instance_name}`)
+        
         const statusResponse = await fetch(
           `${EVOLUTION_API_URL}/instance/connectionState/${instance.instance_name}`,
           {
@@ -241,6 +243,9 @@ export async function PUT(request: NextRequest) {
             }
           }
         )
+
+        console.log('🔍 Status da resposta:', statusResponse.status)
+        console.log('🔍 Headers da resposta:', Object.fromEntries(statusResponse.headers.entries()))
 
         if (!statusResponse.ok) {
           const errorData = await statusResponse.json()
@@ -252,11 +257,16 @@ export async function PUT(request: NextRequest) {
         }
 
         const statusData = await statusResponse.json()
-        console.log('✅ Evolution API: Status obtido:', statusData)
+        console.log('✅ Evolution API: Status obtido (RESPOSTA COMPLETA):', JSON.stringify(statusData, null, 2))
+        console.log('🔍 Campo "state" da resposta:', statusData.state)
+        console.log('🔍 Tipo do campo "state":', typeof statusData.state)
 
         // Atualizar status no banco de dados
+        const mappedStatus = mapEvolutionStatus(statusData.state)
+        console.log('🔍 Status mapeado:', mappedStatus)
+        
         const updateData = {
-          status: mapEvolutionStatus(statusData.state) || 'error',
+          status: mappedStatus,
           updated_at: new Date().toISOString()
         }
 
