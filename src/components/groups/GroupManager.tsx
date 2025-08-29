@@ -333,7 +333,7 @@ export default function GroupManager() {
                   </div>
                 </div>
               ))}
-              
+
               {/* Mensagem quando não há resultados no filtro */}
               {filteredGroups.length === 0 && filterText && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -379,7 +379,7 @@ export default function GroupManager() {
                     >
                       Anterior
                     </Button>
-                    
+
                     {/* Páginas numeradas */}
                     <div className="flex items-center gap-1">
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
@@ -413,7 +413,7 @@ export default function GroupManager() {
                         return null
                       })}
                     </div>
-                    
+
                     <Button
                       onClick={() => goToPage(currentPage + 1)}
                       disabled={currentPage === totalPages}

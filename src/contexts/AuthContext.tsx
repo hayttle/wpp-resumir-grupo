@@ -5,14 +5,28 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { InstanceService } from '@/lib/services'
 
+// Tipo estendido para usuário autenticado com dados do banco
+interface AuthenticatedUser extends User {
+  profile?: {
+    id: string
+    name: string
+    email: string
+    phone_number?: string
+    role: 'user' | 'admin' | 'moderator'
+    created_at: string
+    updated_at?: string
+  }
+}
+
 interface AuthContextType {
-  user: User | null
+  user: AuthenticatedUser | null
   session: Session | null
   loading: boolean
   error: string | null
   signUp: (email: string, password: string, userData: { name: string; phone_number?: string }) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
+  logout: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
   updateProfile: (updates: { name?: string; phone_number?: string }) => Promise<{ error: any }>
 }
@@ -20,7 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<AuthenticatedUser | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -44,6 +58,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setSession(session)
           setUser(session?.user ?? null)
+          
+          // Se há uma sessão, buscar o perfil do usuário
+          if (session?.user) {
+            await fetchUserProfile(session.user.id)
+          }
         }
       } catch (err) {
         console.error('Erro inesperado ao buscar sessão:', err)
@@ -67,6 +86,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (event === 'SIGNED_IN' && session?.user) {
             await createOrUpdateUserProfile(session.user)
           }
+          
+          // Se o usuário fez logout, limpar o perfil
+          if (event === 'SIGNED_OUT') {
+            setUser(null)
+          }
         } catch (err) {
           console.error('Erro ao processar mudança de autenticação:', err)
           setError('Erro ao processar autenticação')
@@ -84,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: existingUser, error: selectError } = await supabase
         .from('users')
-        .select('id')
+        .select('id, name, email, phone_number, role, created_at, updated_at')
         .eq('id', user.id)
         .single()
 
@@ -102,7 +126,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               id: user.id,
               email: user.email!,
               name: user.user_metadata?.name || 'Usuário',
-              phone_number: user.user_metadata?.phone_number
+              phone_number: user.user_metadata?.phone_number,
+              role: 'user' // Default role
             }
           ])
 
@@ -112,9 +137,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         console.log('✅ Perfil criado com sucesso')
+        
+        // Buscar o perfil criado para atualizar o estado
+        await fetchUserProfile(user.id)
+      } else {
+        // Atualizar perfil existente
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({
+            name: user.user_metadata?.name || 'Usuário',
+            phone_number: user.user_metadata?.phone_number,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id)
+
+        if (updateError) {
+          console.error('Erro ao atualizar perfil:', updateError)
+          return
+        }
+        console.log('✅ Perfil atualizado com sucesso')
+        
+        // Buscar o perfil atualizado para atualizar o estado
+        await fetchUserProfile(user.id)
       }
     } catch (error) {
       console.error('Erro ao verificar/criar perfil:', error)
+    }
+  }
+
+  // Buscar perfil completo do usuário
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('id, name, email, phone_number, role, created_at, updated_at')
+        .eq('id', userId)
+        .single()
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error)
+        return
+      }
+
+      // Atualizar o estado do usuário com o perfil
+      setUser(prevUser => prevUser ? { ...prevUser, profile } : null)
+    } catch (error) {
+      console.error('Erro ao buscar perfil:', error)
     }
   }
 
@@ -159,6 +227,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Erro ao fazer logout:', error)
     }
+  }
+
+  // Logout (alias para signOut)
+  const logout = async () => {
+    await signOut()
   }
 
   // Reset de senha
@@ -208,6 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signIn,
     signOut,
+    logout,
     resetPassword,
     updateProfile
   }
