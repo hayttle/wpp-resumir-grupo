@@ -115,8 +115,7 @@ export default function UserProfile() {
             <button
               onClick={() => {
                 setIsOpen(false)
-                // TODO: Implementar página de perfil
-                console.log('Ir para perfil')
+                router.push('/profile')
               }}
               className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-left"
             >

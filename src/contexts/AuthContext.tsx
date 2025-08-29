@@ -29,6 +29,7 @@ interface AuthContextType {
   logout: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: any }>
   updateProfile: (updates: { name?: string; phone_number?: string }) => Promise<{ error: any }>
+  updateUserProfile: (updates: { name?: string; role?: 'user' | 'admin' }) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -312,6 +313,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // Atualizar perfil do usuário (nome e role)
+  const updateUserProfile = async (updates: { name?: string; role?: 'user' | 'admin' }) => {
+    try {
+      if (!user) throw new Error('Usuário não autenticado')
+
+      // Atualizar perfil no banco
+      const { error: dbError } = await supabase
+        .from('users')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+
+      if (dbError) throw dbError
+
+      // Atualizar estado local
+      setUser(prev => prev ? {
+        ...prev,
+        profile: prev.profile ? {
+          ...prev.profile,
+          ...updates,
+          updated_at: new Date().toISOString()
+        } : prev.profile
+      } : null)
+
+      console.log('✅ Perfil do usuário atualizado com sucesso')
+    } catch (error) {
+      console.error('❌ Erro ao atualizar perfil do usuário:', error)
+      throw error
+    }
+  }
+
   const value = {
     user,
     session,
@@ -322,7 +356,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     logout,
     resetPassword,
-    updateProfile
+    updateProfile,
+    updateUserProfile
   }
 
   return (
