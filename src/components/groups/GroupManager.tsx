@@ -185,39 +185,134 @@ export default function GroupManager() {
 
   if (!instance?.instance_name) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciar Grupos WhatsApp</CardTitle>
-          <CardDescription>
-            Nenhuma instância encontrada. Crie uma instância primeiro.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        {/* Header Principal */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Gerenciar Grupos WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Configure uma instância primeiro para poder buscar e selecionar grupos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Status da Instância</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-gray-500"></div>
+                  <span className="text-sm font-medium">Não Configurada</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Ações</div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.location.href = '/instances'}
+                  >
+                    Configurar Instância
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mensagem de status importante */}
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center gap-2 text-gray-700">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  ⚠️ Você precisa criar e configurar uma instância do WhatsApp primeiro
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estado vazio */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Para gerenciar grupos, você precisa configurar uma instância do WhatsApp</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   if (instance.status !== 'open') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciar Grupos WhatsApp</CardTitle>
-          <CardDescription>
-            Sua instância precisa estar conectada para buscar grupos.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 text-amber-600">
-            <AlertCircle className="h-4 w-4" />
-            <span>Status da instância: {instance.status}</span>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* Header Principal */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Gerenciar Grupos WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Conecte sua instância primeiro para poder buscar e selecionar grupos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Nome da Instância</div>
+                <div className="font-mono text-sm font-medium">{instance?.instance_name}</div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Status</div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                  <span className="text-sm font-medium">Desconectado</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">Ações</div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => window.location.href = '/instances'}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Conectar Instância
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mensagem de status importante */}
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  ⚠️ Sua instância precisa estar conectada para buscar e gerenciar grupos
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estado vazio */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Para gerenciar grupos, sua instância do WhatsApp precisa estar conectada</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
+      {/* Header Principal */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -229,37 +324,40 @@ export default function GroupManager() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-muted-foreground">
-                Instância: <span className="font-mono">{instance?.instance_name}</span>
-              </div>
-              {updatingStatus && (
-                <div className="flex items-center gap-2 text-blue-600">
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                  <span className="text-xs">Atualizando status...</span>
-                </div>
-              )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Nome da Instância</div>
+              <div className="font-mono text-sm font-medium">{instance?.instance_name}</div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={updateInstanceStatus}
-                disabled={updatingStatus}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${updatingStatus ? 'animate-spin' : ''}`} />
-                {updatingStatus ? 'Atualizando...' : 'Atualizar Status'}
-              </Button>
-              <Button
-                onClick={fetchAllGroups}
-                disabled={fetchingGroups}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
-                {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
-              </Button>
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Status</div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-sm font-medium">Conectado</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">Ações</div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={fetchAllGroups}
+                  disabled={fetchingGroups}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
+                  {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Mensagem de status importante */}
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-700">
+              <Check className="h-4 w-4" />
+              <span className="text-sm font-medium">
+                ✅ Sua instância está conectada e capturando mensagens dos grupos selecionados
+              </span>
             </div>
           </div>
         </CardContent>
