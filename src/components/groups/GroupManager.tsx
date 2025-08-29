@@ -23,6 +23,8 @@ export default function GroupManager() {
   const [loading, setLoading] = useState(true)
   const [fetchingGroups, setFetchingGroups] = useState(false)
   const [filterText, setFilterText] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
 
   useEffect(() => {
     if (user) {
@@ -149,6 +151,30 @@ export default function GroupManager() {
     (group.desc && group.desc.toLowerCase().includes(filterText.toLowerCase()))
   )
 
+  // Calcular paginação
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const currentGroups = filteredGroups.slice(startIndex, endIndex)
+
+  // Resetar para primeira página quando o filtro mudar
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [filterText])
+
+  // Resetar para primeira página quando mudar itens por página
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+  }
+
+  // Navegar para página específica
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -264,7 +290,7 @@ export default function GroupManager() {
             </div>
 
             <div className="space-y-4">
-              {filteredGroups.map((group) => (
+              {currentGroups.map((group) => (
                 <div
                   key={group.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -307,7 +333,7 @@ export default function GroupManager() {
                   </div>
                 </div>
               ))}
-
+              
               {/* Mensagem quando não há resultados no filtro */}
               {filteredGroups.length === 0 && filterText && (
                 <div className="text-center py-8 text-muted-foreground">
@@ -317,6 +343,90 @@ export default function GroupManager() {
                 </div>
               )}
             </div>
+
+            {/* Controles de Paginação */}
+            {filteredGroups.length > 0 && (
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Seletor de itens por página */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Mostrar:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                    className="border rounded-md px-2 py-1 text-sm bg-white"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span className="text-sm text-muted-foreground">por página</span>
+                </div>
+
+                {/* Informações da paginação */}
+                <div className="text-sm text-muted-foreground">
+                  Mostrando {startIndex + 1}-{Math.min(endIndex, filteredGroups.length)} de {filteredGroups.length} grupos
+                </div>
+
+                {/* Navegação entre páginas */}
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => goToPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                    >
+                      Anterior
+                    </Button>
+                    
+                    {/* Páginas numeradas */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                        // Mostrar apenas algumas páginas para não poluir a interface
+                        if (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        ) {
+                          return (
+                            <Button
+                              key={page}
+                              onClick={() => goToPage(page)}
+                              variant={currentPage === page ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          )
+                        } else if (
+                          page === currentPage - 2 ||
+                          page === currentPage + 2
+                        ) {
+                          return (
+                            <span key={page} className="px-2 text-muted-foreground">
+                              ...
+                            </span>
+                          )
+                        }
+                        return null
+                      })}
+                    </div>
+                    
+                    <Button
+                      onClick={() => goToPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      variant="outline"
+                      size="sm"
+                      className="px-3"
+                    >
+                      Próxima
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
