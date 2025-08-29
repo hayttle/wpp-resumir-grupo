@@ -206,6 +206,15 @@ export default function InstanceManager() {
 
   return (
     <div className="space-y-6">
+      {/* Header da página */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Gerenciar Instância WhatsApp</h1>
+        <p className="text-gray-600 mt-2">
+          Gerencie sua instância WhatsApp, conecte dispositivos e monitore o status
+        </p>
+      </div>
+
+      {/* Status da Instância */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

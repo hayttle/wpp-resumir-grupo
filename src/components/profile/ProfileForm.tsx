@@ -46,7 +46,7 @@ export default function ProfileForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user?.id) {
       setMessage({ type: 'error', text: 'Usuário não autenticado' })
       return
@@ -68,18 +68,18 @@ export default function ProfileForm() {
         role: profileData.role as 'user' | 'admin'
       })
 
-      setMessage({ 
-        type: 'success', 
-        text: 'Perfil atualizado com sucesso!' 
+      setMessage({
+        type: 'success',
+        text: 'Perfil atualizado com sucesso!'
       })
 
       // Limpar mensagem após 3 segundos
       setTimeout(() => setMessage(null), 3000)
     } catch (error) {
       console.error('Erro ao atualizar perfil:', error)
-      setMessage({ 
-        type: 'error', 
-        text: 'Erro ao atualizar perfil. Tente novamente.' 
+      setMessage({
+        type: 'error',
+        text: 'Erro ao atualizar perfil. Tente novamente.'
       })
     } finally {
       setIsSaving(false)
@@ -104,6 +104,14 @@ export default function ProfileForm() {
 
   return (
     <div className="space-y-6">
+      {/* Header da página */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Meu Perfil</h1>
+        <p className="text-gray-600 mt-2">
+          Atualize suas informações pessoais e configurações da conta
+        </p>
+      </div>
+
       {/* Informações da Conta */}
       <Card>
         <CardHeader>
@@ -159,7 +167,7 @@ export default function ProfileForm() {
                   {getRoleDisplayName(profileData.role)}
                 </Badge>
                 <p className="text-xs text-gray-500">
-                  {user?.profile?.role === 'admin' 
+                  {user?.profile?.role === 'admin'
                     ? 'Administradores podem alterar o tipo de conta'
                     : 'Apenas administradores podem alterar o tipo de conta'
                   }
@@ -193,15 +201,13 @@ export default function ProfileForm() {
 
       {/* Mensagens de Feedback */}
       {message && (
-        <Card className={`border-l-4 ${
-          message.type === 'success' 
-            ? 'border-l-green-500 bg-green-50' 
+        <Card className={`border-l-4 ${message.type === 'success'
+            ? 'border-l-green-500 bg-green-50'
             : 'border-l-red-500 bg-red-50'
-        }`}>
+          }`}>
           <CardContent className="pt-6">
-            <div className={`flex items-center gap-3 ${
-              message.type === 'success' ? 'text-green-700' : 'text-red-700'
-            }`}>
+            <div className={`flex items-center gap-3 ${message.type === 'success' ? 'text-green-700' : 'text-red-700'
+              }`}>
               {message.type === 'success' ? (
                 <CheckCircle className="h-5 w-5" />
               ) : (
@@ -244,7 +250,7 @@ export default function ProfileForm() {
               <div>
                 <div className="text-sm font-medium text-gray-900">Última Atualização</div>
                 <div className="text-xs text-gray-500">
-                  {user?.profile?.updated_at 
+                  {user?.profile?.updated_at
                     ? new Date(user.profile.updated_at).toLocaleDateString('pt-BR')
                     : 'Nunca'
                   }
