@@ -77,6 +77,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔄 Evento de autenticação:', event, session ? 'com sessão' : 'sem sessão')
+
         try {
           setSession(session)
           setUser(session?.user ?? null)
@@ -84,18 +86,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           // Se o usuário fez login, criar/atualizar perfil no banco
           if (event === 'SIGNED_IN' && session?.user) {
+            console.log('✅ Usuário fez login, criando/atualizando perfil...')
             await createOrUpdateUserProfile(session.user)
           }
 
           // Se o usuário fez logout, limpar o perfil
           if (event === 'SIGNED_OUT') {
+            console.log('✅ Usuário fez logout, limpando estado...')
             setUser(null)
+            setSession(null)
+            setError(null)
           }
         } catch (err) {
-          console.error('Erro ao processar mudança de autenticação:', err)
+          console.error('❌ Erro ao processar mudança de autenticação:', err)
           setError('Erro ao processar autenticação')
-        } finally {
-          setLoading(false)
         }
       }
     )
@@ -176,6 +180,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Erro ao buscar perfil:', error)
+        // Em caso de erro, definir usuário básico
+        setUser(prevUser => prevUser ? { ...prevUser, profile: undefined } : null)
         return
       }
 
@@ -183,6 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(prevUser => prevUser ? { ...prevUser, profile } : null)
     } catch (error) {
       console.error('Erro ao buscar perfil:', error)
+      // Em caso de erro, definir usuário básico
+      setUser(prevUser => prevUser ? { ...prevUser, profile: undefined } : null)
     }
   }
 
@@ -223,15 +231,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Logout
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      console.log('🔄 Iniciando processo de logout...')
+
+      // Limpar estado local primeiro
+      setUser(null)
+      setSession(null)
+      setError(null)
+      console.log('✅ Estado local limpo')
+
+      // Tentar logout via Supabase
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        console.error('❌ Erro no logout do Supabase:', error)
+        throw error
+      }
+
+      console.log('✅ Logout do Supabase realizado com sucesso')
+
+      // Limpar qualquer estado persistido
+      localStorage.removeItem('supabase.auth.token')
+      sessionStorage.clear()
+      console.log('✅ Cache e storage limpos')
+
     } catch (error) {
-      console.error('Erro ao fazer logout:', error)
+      console.error('❌ Erro ao fazer signOut:', error)
+      // Mesmo com erro, limpar o estado local
+      setUser(null)
+      setSession(null)
+      throw error
     }
   }
 
   // Logout (alias para signOut)
   const logout = async () => {
-    await signOut()
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('Erro no logout:', error)
+      throw error
+    }
   }
 
   // Reset de senha

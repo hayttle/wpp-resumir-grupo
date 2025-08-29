@@ -4,18 +4,16 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { 
-  LayoutDashboard, 
-  MessageCircle, 
-  Users, 
-  CreditCard, 
-  UserCog, 
-  Settings,
-  Menu,
+import { useAuth } from '@/contexts/AuthContext'
+import {
+  LayoutDashboard,
+  MessageCircle,
+  Users,
+  CreditCard,
+  UserCog,
   X,
   LogOut
 } from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -33,7 +31,8 @@ interface MenuItem {
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+
   // Menu para usuários autenticados
   const userMenuItems: MenuItem[] = [
     {
@@ -87,9 +86,21 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
+      console.log('🔄 Iniciando logout no Sidebar...')
+      setIsLoggingOut(true)
+
       await logout()
+      console.log('✅ Logout realizado com sucesso, redirecionando...')
+
+      // Redirecionar para a página de login após logout
+      window.location.href = '/auth/login'
     } catch (error) {
-      console.error('Erro ao fazer logout:', error)
+      console.error('❌ Erro ao fazer logout:', error)
+      setIsLoggingOut(false)
+
+      // Mesmo com erro, tentar redirecionar
+      alert('Erro no logout, mas você será redirecionado para o login')
+      window.location.href = '/auth/login'
     }
   }
 
@@ -97,7 +108,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     <>
       {/* Overlay para mobile */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onToggle}
         />
@@ -114,7 +125,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             <MessageCircle className="h-8 w-8 text-green-600" />
             <span className="text-xl font-bold text-gray-900">WPP Resumir</span>
           </div>
-          
+
           {/* Botão fechar para mobile */}
           <Button
             variant="ghost"
@@ -215,9 +226,17 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               variant="outline"
               size="sm"
               className="w-full justify-start gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              disabled={isLoggingOut}
             >
-              <LogOut className="h-4 w-4" />
-              Sair
+              {isLoggingOut ? (
+                <svg className="animate-spin h-4 w-4 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <LogOut className="h-4 w-4" />
+              )}
+              {isLoggingOut ? 'Saindo...' : 'Sair'}
             </Button>
           </div>
         </div>

@@ -15,24 +15,52 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<any[]>([])
 
   useEffect(() => {
+    // Timeout de segurança para evitar loading infinito
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Timeout de segurança: parando loading do dashboard')
+        setLoading(false)
+      }
+    }, 10000) // 10 segundos
+
+    // Se já temos o usuário, carregar dados
     if (user?.id) {
       loadDashboardData()
     }
-  }, [user?.id])
+    // Se não há usuário e não está carregando, parar loading
+    else if (!user) {
+      setLoading(false)
+    }
+
+    return () => clearTimeout(timeoutId)
+  }, [user])
 
   const loadDashboardData = async () => {
+    if (!user?.id) return
+
     try {
       setLoading(true)
 
       // Buscar estatísticas do dashboard
-      const dashboardStats = await DashboardService.getUserDashboardStats(user!.id)
+      const dashboardStats = await DashboardService.getUserDashboardStats(user.id)
       setStats(dashboardStats)
 
       // Buscar atividade recente
-      const activity = await DashboardService.getUserRecentActivity(user!.id, 5)
+      const activity = await DashboardService.getUserRecentActivity(user.id, 5)
       setRecentActivity(activity)
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error)
+      // Em caso de erro, definir dados padrão
+      setStats({
+        totalGroups: 0,
+        activeGroups: 0,
+        totalSummaries: 0,
+        summariesThisMonth: 0,
+        instanceStatus: null,
+        instanceName: null,
+        lastSummaryDate: null
+      })
+      setRecentActivity([])
     } finally {
       setLoading(false)
     }
@@ -87,7 +115,19 @@ export default function DashboardPage() {
     })
   }
 
-  if (loading) {
+  // Se não há dados, mostrar dashboard vazio
+  const displayStats = stats || {
+    totalGroups: 0,
+    activeGroups: 0,
+    totalSummaries: 0,
+    summariesThisMonth: 0,
+    instanceStatus: null,
+    instanceName: null,
+    lastSummaryDate: null
+  }
+
+  // Garantir que o dashboard seja sempre exibido, mesmo sem dados
+  if (loading && !stats) {
     return (
       <div className="bg-gray-50">
         <div className="container mx-auto px-4 py-8">
@@ -97,6 +137,7 @@ export default function DashboardPage() {
                 <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
               </div>
               <p className="text-gray-600">Carregando dashboard...</p>
+              <p className="text-sm text-gray-500 mt-2">Se demorar muito, tente recarregar a página</p>
             </div>
           </div>
         </div>
@@ -128,10 +169,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                {stats?.activeGroups || 0}
+                {displayStats.activeGroups || 0}
               </div>
               <p className="text-xs text-gray-500">
-                de {stats?.totalGroups || 0} configurados
+                de {displayStats.totalGroups || 0} configurados
               </p>
             </CardContent>
           </Card>
@@ -145,10 +186,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                {stats?.summariesThisMonth || 0}
+                {displayStats.summariesThisMonth || 0}
               </div>
               <p className="text-xs text-gray-500">
-                este mês ({stats?.totalSummaries || 0} total)
+                este mês ({displayStats.totalSummaries || 0} total)
               </p>
             </CardContent>
           </Card>
@@ -162,13 +203,13 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                {getInstanceStatusIcon(stats?.instanceStatus)}
-                <div className={`text-lg font-bold ${getInstanceStatusColor(stats?.instanceStatus)}`}>
-                  {getInstanceStatusText(stats?.instanceStatus)}
+                {getInstanceStatusIcon(displayStats.instanceStatus)}
+                <div className={`text-lg font-bold ${getInstanceStatusColor(displayStats.instanceStatus)}`}>
+                  {getInstanceStatusText(displayStats.instanceStatus)}
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-1">
-                {stats?.instanceName || 'Configure sua instância'}
+                {displayStats.instanceName || 'Configure sua instância'}
               </p>
             </CardContent>
           </Card>
@@ -182,10 +223,10 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-lg font-bold text-gray-900">
-                {stats?.lastSummaryDate ? formatDate(stats.lastSummaryDate) : 'Nunca'}
+                {displayStats.lastSummaryDate ? formatDate(displayStats.lastSummaryDate) : 'Nunca'}
               </div>
               <p className="text-xs text-gray-500">
-                {stats?.lastSummaryDate ? 'Última atividade' : 'Nenhum resumo gerado'}
+                {displayStats.lastSummaryDate ? 'Última atividade' : 'Nenhum resumo gerado'}
               </p>
             </CardContent>
           </Card>
@@ -197,7 +238,7 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-gray-900">Configurar WhatsApp</CardTitle>
               <CardDescription className="text-gray-600">
-                {stats?.instanceStatus === 'open'
+                {displayStats.instanceStatus === 'open'
                   ? 'Sua instância está conectada e funcionando'
                   : 'Conecte sua instância do WhatsApp para começar'
                 }
@@ -207,7 +248,7 @@ export default function DashboardPage() {
               <Link href="/instances">
                 <Button className="bg-green-600 hover:bg-green-700">
                   <Smartphone className="h-4 w-4 mr-2" />
-                  {stats?.instanceStatus === 'open' ? 'Gerenciar Instância' : 'Configurar Instância'}
+                  {displayStats.instanceStatus === 'open' ? 'Gerenciar Instância' : 'Configurar Instância'}
                 </Button>
               </Link>
             </CardContent>
@@ -217,8 +258,8 @@ export default function DashboardPage() {
             <CardHeader>
               <CardTitle className="text-gray-900">Gerenciar Grupos</CardTitle>
               <CardDescription className="text-gray-600">
-                {stats && stats.totalGroups > 0
-                  ? `Você tem ${stats.totalGroups} grupo(s) configurado(s)`
+                {displayStats.totalGroups > 0
+                  ? `Você tem ${displayStats.totalGroups} grupo(s) configurado(s)`
                   : 'Selecione e configure os grupos para monitoramento'
                 }
               </CardDescription>
