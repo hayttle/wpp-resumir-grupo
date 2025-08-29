@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +8,7 @@ import { RefreshCw, Users, Check, Plus, AlertCircle } from 'lucide-react'
 import { GroupService } from '@/lib/services'
 import { useAuth } from '@/contexts/AuthContext'
 import { WhatsAppGroup, GroupSelection } from '@/types/database'
-import { InstanceService } from '@/lib/services'
+import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
@@ -16,33 +16,22 @@ interface GroupWithSelectionStatus extends WhatsAppGroup {
 
 export default function GroupManager() {
   const { user } = useAuth()
+  const { instance, updatingStatus, updateInstanceStatus } = useInstanceStatus()
   const [groups, setGroups] = useState<GroupWithSelectionStatus[]>([])
   const [selectedGroups, setSelectedGroups] = useState<GroupSelection[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchingGroups, setFetchingGroups] = useState(false)
-  const [instanceName, setInstanceName] = useState<string | null>(null)
-  const [instanceStatus, setInstanceStatus] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
-      loadUserInstance()
       loadUserGroupSelections()
+      // Atualizar status da instância automaticamente ao entrar na página
+      updateInstanceStatus()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const loadUserInstance = async () => {
-    try {
-      const userInstance = await InstanceService.getCurrentUserInstance()
-      if (userInstance) {
-        setInstanceName(userInstance.instance_name)
-        setInstanceStatus(userInstance.status)
-      }
-    } catch (error) {
-      console.error('❌ Erro ao carregar instância:', error)
-    }
-  }
-
-  const loadUserGroupSelections = async () => {
+  const loadUserGroupSelections = useCallback(async () => {
     try {
       const groupSelections = await GroupService.getUserGroupSelections()
       setSelectedGroups(groupSelections)
@@ -51,19 +40,19 @@ export default function GroupManager() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const fetchAllGroups = async () => {
-    if (!instanceName) {
+    if (!instance?.instance_name) {
       alert('Instância não encontrada')
       return
     }
 
     try {
       setFetchingGroups(true)
-      console.log('🔍 Buscando grupos da instância:', instanceName)
+      console.log('🔍 Buscando grupos da instância:', instance.instance_name)
 
-      const fetchedGroups = await GroupService.fetchAllGroups(instanceName)
+      const fetchedGroups = await GroupService.fetchAllGroups(instance.instance_name)
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
       const groupsWithStatus: GroupWithSelectionStatus[] = fetchedGroups.map(group => ({
         ...group,
@@ -160,7 +149,7 @@ export default function GroupManager() {
     )
   }
 
-  if (!instanceName) {
+  if (!instance?.instance_name) {
     return (
       <Card>
         <CardHeader>
@@ -173,7 +162,7 @@ export default function GroupManager() {
     )
   }
 
-  if (instanceStatus !== 'open') {
+  if (instance.status !== 'open') {
     return (
       <Card>
         <CardHeader>
@@ -185,7 +174,7 @@ export default function GroupManager() {
         <CardContent>
           <div className="flex items-center gap-2 text-amber-600">
             <AlertCircle className="h-4 w-4" />
-            <span>Status da instância: {instanceStatus}</span>
+            <span>Status da instância: {instance.status}</span>
           </div>
         </CardContent>
       </Card>
@@ -207,17 +196,37 @@ export default function GroupManager() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between">
-            <div className="text-sm text-muted-foreground">
-              Instância: <span className="font-mono">{instanceName}</span>
+            <div className="flex items-center gap-3">
+              <div className="text-sm text-muted-foreground">
+                Instância: <span className="font-mono">{instance?.instance_name}</span>
+              </div>
+              {updatingStatus && (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span className="text-xs">Atualizando status...</span>
+                </div>
+              )}
             </div>
-            <Button
-              onClick={fetchAllGroups}
-              disabled={fetchingGroups}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
-              {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={updateInstanceStatus}
+                disabled={updatingStatus}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${updatingStatus ? 'animate-spin' : ''}`} />
+                {updatingStatus ? 'Atualizando...' : 'Atualizar Status'}
+              </Button>
+              <Button
+                onClick={fetchAllGroups}
+                disabled={fetchingGroups}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
+                {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

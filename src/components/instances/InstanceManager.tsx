@@ -8,19 +8,15 @@ import { RefreshCw, Wifi, WifiOff, Smartphone, QrCode } from 'lucide-react'
 import { InstanceService } from '@/lib/services'
 import { useAuth } from '@/contexts/AuthContext'
 import { Instance } from '@/types/database'
+import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 
 export default function InstanceManager() {
   const { user } = useAuth()
-  const [instance, setInstance] = useState<Instance | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { instance, loading, updatingStatus, updateInstanceStatus } = useInstanceStatus()
   const [connecting, setConnecting] = useState(false)
-  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [creatingInstance, setCreatingInstance] = useState(false)
 
-  useEffect(() => {
-    if (user) {
-      loadUserInstance()
-    }
-  }, [user])
+
 
   // Verificação automática de status quando estiver conectando
   useEffect(() => {
@@ -32,12 +28,11 @@ export default function InstanceManager() {
       intervalId = setInterval(async () => {
         console.log('🔄 Verificação automática de status...')
         try {
-          const updatedInstance = await InstanceService.updateInstanceStatus()
-          if (updatedInstance && updatedInstance.status !== 'connecting') {
-            console.log('🔄 Status mudou automaticamente:', updatedInstance.status)
-            setInstance(updatedInstance)
+          await updateInstanceStatus()
+          if (instance && instance.status !== 'connecting') {
+            console.log('🔄 Status mudou automaticamente:', instance.status)
 
-            if (updatedInstance.status === 'open') {
+            if (instance.status === 'open') {
               console.log('🎉 WhatsApp conectado automaticamente!')
             }
           }
@@ -53,19 +48,10 @@ export default function InstanceManager() {
         clearInterval(intervalId)
       }
     }
-  }, [instance?.status])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance?.status, updateInstanceStatus])
 
-  const loadUserInstance = async () => {
-    try {
-      setLoading(true)
-      const userInstance = await InstanceService.getCurrentUserInstance()
-      setInstance(userInstance)
-    } catch (error) {
-      console.error('❌ Erro ao carregar instância:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+
 
   const connectInstance = async () => {
     try {
@@ -73,7 +59,8 @@ export default function InstanceManager() {
       console.log('🔧 Conectando instância...')
 
       const updatedInstance = await InstanceService.connectInstance()
-      setInstance(updatedInstance)
+      // Recarregar a instância após conectar
+      await updateInstanceStatus()
 
       console.log('✅ Instância conectada:', updatedInstance)
     } catch (error) {
@@ -90,7 +77,8 @@ export default function InstanceManager() {
       console.log('🔌 Desconectando instância...')
 
       const updatedInstance = await InstanceService.disconnectInstance()
-      setInstance(updatedInstance)
+      // Recarregar a instância após desconectar
+      await updateInstanceStatus()
 
       console.log('✅ Instância desconectada:', updatedInstance)
     } catch (error) {
@@ -101,44 +89,43 @@ export default function InstanceManager() {
     }
   }
 
-  const updateInstanceStatus = async () => {
+  const createInstance = async () => {
     try {
-      setUpdatingStatus(true)
-      console.log('🔍 Atualizando status da instância...')
-      console.log('🔍 Status atual:', instance?.status)
+      setCreatingInstance(true)
+      console.log('🔧 Criando instância...')
 
-      const updatedInstance = await InstanceService.updateInstanceStatus()
-      console.log('🔍 Instância retornada da API:', updatedInstance)
-
-      if (updatedInstance) {
-        setInstance(updatedInstance)
-        console.log('✅ Status atualizado no frontend:', updatedInstance.status)
-
-        // Verificar se o status mudou
-        if (instance && instance.status !== updatedInstance.status) {
-          console.log('🔄 Status mudou de', instance.status, 'para', updatedInstance.status)
-
-          if (updatedInstance.status === 'open') {
-            console.log('🎉 WhatsApp conectado com sucesso!')
-          } else if (updatedInstance.status === 'close') {
-            console.log('⚠️ WhatsApp desconectado')
-          } else if (updatedInstance.status === 'connecting') {
-            console.log('⏳ WhatsApp ainda está conectando...')
-          }
-        } else {
-          console.log('ℹ️ Status não mudou:', updatedInstance.status)
-        }
-      } else {
-        console.log('⚠️ Nenhuma instância retornada da API')
+      if (!user?.user_metadata?.name || !user?.user_metadata?.phone_number) {
+        alert('Nome e telefone são necessários para criar a instância. Atualize seu perfil primeiro.')
+        return
       }
 
+      const instanceName = InstanceService.generateInstanceName(
+        user.user_metadata.name,
+        user.user_metadata.phone_number
+      )
+
+      const newInstance = await InstanceService.createInstance(
+        user.id,
+        instanceName,
+        user.user_metadata.phone_number
+      )
+
+      if (newInstance) {
+        // Recarregar a instância após criar
+        await updateInstanceStatus()
+        console.log('✅ Instância criada com sucesso:', newInstance)
+      } else {
+        alert('Erro ao criar instância. Tente novamente.')
+      }
     } catch (error) {
-      console.error('❌ Erro ao atualizar status:', error)
-      alert('Erro ao atualizar status. Tente novamente.')
+      console.error('❌ Erro ao criar instância:', error)
+      alert('Erro ao criar instância. Tente novamente.')
     } finally {
-      setUpdatingStatus(false)
+      setCreatingInstance(false)
     }
   }
+
+
 
   if (loading) {
     return (
@@ -150,14 +137,53 @@ export default function InstanceManager() {
 
   if (!instance) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Gerenciar Instância WhatsApp</CardTitle>
-          <CardDescription>
-            Nenhuma instância encontrada. Crie uma instância primeiro.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="h-5 w-5" />
+              Instância WhatsApp
+            </CardTitle>
+            <CardDescription>
+              Você ainda não tem uma instância configurada
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-center py-8">
+              <Smartphone className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-semibold mb-2">Nenhuma Instância Configurada</h3>
+              <p className="text-muted-foreground mb-6">
+                Para começar a usar o sistema de resumos automáticos, você precisa criar uma instância do WhatsApp.
+              </p>
+
+              {user?.user_metadata?.name && user?.user_metadata?.phone_number ? (
+                <Button
+                  onClick={createInstance}
+                  disabled={creatingInstance}
+                  size="lg"
+                  className="flex items-center gap-2"
+                >
+                  <Smartphone className="h-5 w-5" />
+                  {creatingInstance ? 'Criando Instância...' : 'Criar Instância WhatsApp'}
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-amber-600">
+                    ⚠️ Nome e telefone são necessários para criar a instância
+                  </p>
+                  <Button
+                    onClick={() => window.location.href = '/dashboard'}
+                    variant="outline"
+                    size="lg"
+                  >
+                    Atualizar Perfil
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 

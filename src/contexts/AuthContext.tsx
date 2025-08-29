@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!existingUser) {
-        // Criar novo usuário
+        // Criar perfil no banco de dados
         const { error: insertError } = await supabase
           .from('users')
           .insert([
@@ -111,26 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        // Criar instância automaticamente para novos usuários
-        if (user.user_metadata?.name && user.user_metadata?.phone_number) {
-          try {
-            const instanceName = InstanceService.generateInstanceName(
-              user.user_metadata.name,
-              user.user_metadata.phone_number
-            )
-
-            await InstanceService.createInstance(
-              user.id,
-              instanceName,
-              user.user_metadata.phone_number
-            )
-
-            console.log('✅ Instância criada automaticamente:', instanceName)
-          } catch (instanceError) {
-            console.error('❌ Erro ao criar instância:', instanceError)
-            // Não falhar o cadastro se a instância não puder ser criada
-          }
-        }
+        console.log('✅ Perfil criado com sucesso')
       }
     } catch (error) {
       console.error('Erro ao verificar/criar perfil:', error)
