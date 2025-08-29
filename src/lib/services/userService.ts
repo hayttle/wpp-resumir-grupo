@@ -141,4 +141,44 @@ export class UserService {
       return null
     }
   }
+
+  // Buscar todos os usuários (apenas para admins)
+  static async getAllUsers(): Promise<User[]> {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Erro ao buscar usuários:', error)
+        return []
+      }
+
+      return data || []
+    } catch (error) {
+      console.error('Erro ao buscar usuários:', error)
+      return []
+    }
+  }
+
+  // Deletar usuário (apenas para admins)
+  static async deleteUser(id: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Erro ao deletar usuário:', error)
+        return false
+      }
+
+      return true
+    } catch (error) {
+      console.error('Erro ao deletar usuário:', error)
+      return false
+    }
+  }
 }
