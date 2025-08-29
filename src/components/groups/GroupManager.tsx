@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Users, Check, Plus, AlertCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { RefreshCw, Users, Check, Plus, AlertCircle, Search } from 'lucide-react'
 import { GroupService } from '@/lib/services'
 import { useAuth } from '@/contexts/AuthContext'
 import { WhatsAppGroup, GroupSelection } from '@/types/database'
@@ -21,6 +22,7 @@ export default function GroupManager() {
   const [selectedGroups, setSelectedGroups] = useState<GroupSelection[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchingGroups, setFetchingGroups] = useState(false)
+  const [filterText, setFilterText] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -141,6 +143,12 @@ export default function GroupManager() {
     })
   }
 
+  // Filtrar grupos baseado no texto de busca
+  const filteredGroups = groups.filter(group =>
+    group.subject.toLowerCase().includes(filterText.toLowerCase()) ||
+    (group.desc && group.desc.toLowerCase().includes(filterText.toLowerCase()))
+  )
+
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -235,14 +243,28 @@ export default function GroupManager() {
       {groups.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Grupos Encontrados ({groups.length})</CardTitle>
+            <CardTitle>Grupos Encontrados ({filteredGroups.length} de {groups.length})</CardTitle>
             <CardDescription>
               Clique em &quot;Selecionar&quot; para adicionar o grupo à sua lista de resumos
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Campo de filtro */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Filtrar grupos por nome ou descrição..."
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+
             <div className="space-y-4">
-              {groups.map((group) => (
+              {filteredGroups.map((group) => (
                 <div
                   key={group.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -285,6 +307,15 @@ export default function GroupManager() {
                   </div>
                 </div>
               ))}
+
+              {/* Mensagem quando não há resultados no filtro */}
+              {filteredGroups.length === 0 && filterText && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>Nenhum grupo encontrado para &quot;{filterText}&quot;</p>
+                  <p className="text-sm">Tente ajustar o filtro</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
