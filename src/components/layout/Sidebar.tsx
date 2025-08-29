@@ -105,7 +105,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed left-0 top-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:z-auto",
+        "fixed left-0 top-0 z-50 h-screen w-64 bg-white border-r border-gray-200 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:z-auto",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* Header da Sidebar */}
@@ -127,9 +127,9 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         </div>
 
         {/* Conteúdo da Sidebar */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-[calc(100vh-4rem)]">
           {/* Menu do Usuário */}
-          <div className="flex-1 p-4">
+          <div className="flex-1 p-4 overflow-y-auto">
             <div className="space-y-6">
               {/* Seção do Usuário */}
               <div>
@@ -198,7 +198,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           </div>
 
           {/* Footer da Sidebar */}
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-gray-200 bg-white">
             {/* Informações do usuário */}
             <div className="mb-3 p-3 bg-gray-50 rounded-lg">
               <div className="text-sm font-medium text-gray-900">

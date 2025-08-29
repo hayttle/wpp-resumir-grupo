@@ -1,9 +1,8 @@
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import InstanceManager from '@/components/instances/InstanceManager'
 
 export default function InstancesPage() {
   return (
-    <ProtectedRoute>
+    <div className="bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
@@ -18,6 +17,6 @@ export default function InstancesPage() {
           <InstanceManager />
         </div>
       </div>
-    </ProtectedRoute>
+    </div>
   )
 }

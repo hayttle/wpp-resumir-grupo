@@ -12,7 +12,7 @@ interface AuthenticatedUser extends User {
     name: string
     email: string
     phone_number?: string
-    role: 'user' | 'admin' | 'moderator'
+    role: 'user' | 'admin'
     created_at: string
     updated_at?: string
   }
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setSession(session)
           setUser(session?.user ?? null)
-          
+
           // Se há uma sessão, buscar o perfil do usuário
           if (session?.user) {
             await fetchUserProfile(session.user.id)
@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (event === 'SIGNED_IN' && session?.user) {
             await createOrUpdateUserProfile(session.user)
           }
-          
+
           // Se o usuário fez logout, limpar o perfil
           if (event === 'SIGNED_OUT') {
             setUser(null)
@@ -137,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         console.log('✅ Perfil criado com sucesso')
-        
+
         // Buscar o perfil criado para atualizar o estado
         await fetchUserProfile(user.id)
       } else {
@@ -156,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
         console.log('✅ Perfil atualizado com sucesso')
-        
+
         // Buscar o perfil atualizado para atualizar o estado
         await fetchUserProfile(user.id)
       }
