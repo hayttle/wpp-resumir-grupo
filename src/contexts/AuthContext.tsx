@@ -1,9 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { InstanceService } from '@/lib/services'
+import { InstanceService } from '@/lib/services/instanceService'
 
 // Tipo estendido para usuário autenticado com dados do banco
 interface AuthenticatedUser extends User {

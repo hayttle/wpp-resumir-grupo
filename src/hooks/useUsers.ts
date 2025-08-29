@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { UserService } from '@/lib/services'
+import { UserService } from '@/lib/services/userService'
 import { User, UserInsert, UserUpdate } from '@/types/database'
 
 export function useUsers() {

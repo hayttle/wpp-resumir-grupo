@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { InstanceService } from '@/lib/services'
+import { InstanceService } from '@/lib/services/instanceService'
 import { Instance } from '@/types/database'
 
 export function useInstanceStatus() {

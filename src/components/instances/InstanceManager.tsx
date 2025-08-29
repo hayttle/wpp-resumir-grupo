@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Wifi, WifiOff, Smartphone, QrCode } from 'lucide-react'
-import { InstanceService } from '@/lib/services'
+import { RefreshCw, Smartphone, Check, Plus, AlertCircle } from 'lucide-react'
+import { InstanceService } from '@/lib/services/instanceService'
+import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 import { useAuth } from '@/contexts/AuthContext'
 import { Instance } from '@/types/database'
-import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 
 export default function InstanceManager() {
   const { user } = useAuth()
@@ -190,11 +191,11 @@ export default function InstanceManager() {
   const getStatusInfo = (status: string) => {
     switch (status) {
       case 'open':
-        return { label: 'Conectado', icon: Wifi, color: 'bg-green-100 text-green-800' }
+        return { label: 'Conectado', icon: Check, color: 'bg-green-100 text-green-800' }
       case 'connecting':
         return { label: 'Conectando...', icon: RefreshCw, color: 'bg-yellow-100 text-yellow-800' }
       case 'close':
-        return { label: 'Desconectado', icon: WifiOff, color: 'bg-red-100 text-red-800' }
+        return { label: 'Desconectado', icon: AlertCircle, color: 'bg-red-100 text-red-800' }
       default:
         return { label: status, icon: Smartphone, color: 'bg-gray-100 text-gray-800' }
     }
@@ -257,7 +258,7 @@ export default function InstanceManager() {
             <Card className="bg-green-50 border-green-200">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3 text-green-800">
-                  <Wifi className="h-6 w-6" />
+                  <Check className="h-6 w-6" />
                   <div>
                     <p className="font-semibold">WhatsApp Conectado!</p>
                     <p className="text-sm">Sua instância está funcionando perfeitamente.</p>
@@ -277,7 +278,7 @@ export default function InstanceManager() {
                 variant="destructive"
                 className="flex items-center"
               >
-                <WifiOff className={`h-4 w-4 mr-2 ${connecting ? 'animate-spin' : ''}`} />
+                <AlertCircle className={`h-4 w-4 mr-2 ${connecting ? 'animate-spin' : ''}`} />
                 {connecting ? 'Desconectando...' : 'Desconectar WhatsApp'}
               </Button>
             ) : (

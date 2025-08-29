@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { RefreshCw, Users, Check, Plus, AlertCircle, Search } from 'lucide-react'
-import { GroupService } from '@/lib/services'
+import { GroupService } from '@/lib/services/groupService'
+import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 import { useAuth } from '@/contexts/AuthContext'
 import { WhatsAppGroup, GroupSelection } from '@/types/database'
-import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean

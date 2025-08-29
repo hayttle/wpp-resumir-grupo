@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { InstanceService } from '@/lib/services'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { InstanceService } from '@/lib/services/instanceService'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function InstanceDebug() {
   const { user } = useAuth()
