@@ -123,6 +123,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!existingUser) {
+        // Verificar se é o primeiro usuário do sistema
+        const { data: allUsers, error: countError } = await supabase
+          .from('users')
+          .select('id')
+          .limit(1)
+
+        if (countError) {
+          console.error('Erro ao verificar usuários existentes:', countError)
+          return
+        }
+
+        // Se não há usuários, o primeiro será admin
+        const isFirstUser = allUsers.length === 0
+        const defaultRole = isFirstUser ? 'admin' : 'user'
+
+        console.log(`🔄 Criando usuário com role: ${defaultRole} (${isFirstUser ? 'primeiro usuário' : 'usuário comum'})`)
+
         // Criar perfil no banco de dados
         const { error: insertError } = await supabase
           .from('users')
@@ -132,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: user.email!,
               name: user.user_metadata?.name || 'Usuário',
               phone_number: user.user_metadata?.phone_number,
-              role: 'user' // Default role
+              role: defaultRole
             }
           ])
 
@@ -141,7 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log('✅ Perfil criado com sucesso')
+        console.log(`✅ Perfil criado com sucesso (role: ${defaultRole})`)
 
         // Buscar o perfil criado para atualizar o estado
         await fetchUserProfile(user.id)
