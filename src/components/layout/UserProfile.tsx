@@ -141,8 +141,7 @@ export default function UserProfile() {
               <button
                 onClick={() => {
                   setIsOpen(false)
-                  // TODO: Implementar área administrativa
-                  console.log('Ir para área admin')
+                  router.push('/admin/users')
                 }}
                 className="w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-left"
               >
