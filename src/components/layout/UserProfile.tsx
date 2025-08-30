@@ -12,17 +12,7 @@ export default function UserProfile() {
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Fechar dropdown quando clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  // Removido listener de clique fora para evitar problemas de foco
 
   const handleLogout = async () => {
     try {
@@ -74,7 +64,7 @@ export default function UserProfile() {
             {getUserInitials()}
           </span>
         </div>
-        
+
         {/* Informações do usuário */}
         <div className="hidden sm:block text-left">
           <div className="text-sm font-medium text-gray-900">
@@ -84,12 +74,11 @@ export default function UserProfile() {
             {getUserRole()}
           </div>
         </div>
-        
+
         {/* Ícone de seta */}
-        <ChevronDown 
-          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${
-            isOpen ? 'rotate-180' : ''
-          }`} 
+        <ChevronDown
+          className={`h-4 w-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''
+            }`}
         />
       </Button>
 

@@ -15,24 +15,14 @@ export default function DashboardPage() {
   const [recentActivity, setRecentActivity] = useState<any[]>([])
 
   useEffect(() => {
-    // Timeout de segurança para evitar loading infinito
-    const timeoutId = setTimeout(() => {
-      if (loading) {
-        console.warn('Timeout de segurança: parando loading do dashboard')
-        setLoading(false)
-      }
-    }, 10000) // 10 segundos
-
     // Se já temos o usuário, carregar dados
     if (user?.id) {
       loadDashboardData()
     }
-    // Se não há usuário e não está carregando, parar loading
-    else if (!user) {
+    // Se não há usuário, parar loading
+    else {
       setLoading(false)
     }
-
-    return () => clearTimeout(timeoutId)
   }, [user])
 
   const loadDashboardData = async () => {
@@ -126,8 +116,8 @@ export default function DashboardPage() {
     lastSummaryDate: null
   }
 
-  // Garantir que o dashboard seja sempre exibido, mesmo sem dados
-  if (loading && !stats) {
+  // Mostrar loading apenas se ainda está carregando e não há usuário
+  if (loading && !user) {
     return (
       <div className="bg-gray-50">
         <div className="container mx-auto px-4 py-8">
@@ -137,7 +127,6 @@ export default function DashboardPage() {
                 <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
               </div>
               <p className="text-gray-600">Carregando dashboard...</p>
-              <p className="text-sm text-gray-500 mt-2">Se demorar muito, tente recarregar a página</p>
             </div>
           </div>
         </div>

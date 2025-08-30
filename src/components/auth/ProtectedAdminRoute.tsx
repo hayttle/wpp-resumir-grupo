@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2 } from 'lucide-react'
@@ -12,30 +12,56 @@ interface ProtectedAdminRouteProps {
 export default function ProtectedAdminRoute({ children }: ProtectedAdminRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [checkingRole, setCheckingRole] = useState(true)
+
+  // Cache do status de admin no localStorage para evitar perda temporária
+  const [cachedAdminStatus, setCachedAdminStatus] = useState<string | null>(null)
+
+  // Inicializar cache do localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('admin-status')
+      setCachedAdminStatus(cached)
+    }
+  }, [])
+
+  // Memorizar o status de admin para evitar recálculos desnecessários
+  const adminStatus = useMemo(() => {
+    if (loading) return 'loading'
+    if (!user) return 'not-authenticated'
+    if (!user.profile) {
+      // Se ainda não tem perfil mas temos cache de admin, usar o cache temporariamente
+      return cachedAdminStatus === 'admin' ? 'admin-cached' : 'no-profile'
+    }
+
+    const isAdmin = user.profile.role === 'admin'
+
+    // Atualizar cache quando temos certeza do status
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin-status', isAdmin ? 'admin' : 'user')
+    }
+
+    return isAdmin ? 'admin' : 'not-admin'
+  }, [loading, user?.id, user?.profile?.role, cachedAdminStatus])
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Usuário não autenticado, redirecionar para login
+    // Só redirecionar em casos definitivos, nunca em estados temporários
+    if (adminStatus === 'not-authenticated') {
+      // Aguardar um pouco antes de redirecionar para evitar redirecionamentos prematuros
+      const timer = setTimeout(() => {
         router.push('/auth/login')
-        return
-      }
-
-      // Verificar se o usuário é admin
-      if (user.profile?.role !== 'admin') {
-        // Usuário não é admin, redirecionar para dashboard
+      }, 100)
+      return () => clearTimeout(timer)
+    } else if (adminStatus === 'not-admin') {
+      // Só redirecionar se temos certeza que não é admin
+      const timer = setTimeout(() => {
         router.push('/dashboard')
-        return
-      }
-
-      // Usuário é admin, permitir acesso
-      setCheckingRole(false)
+      }, 100)
+      return () => clearTimeout(timer)
     }
-  }, [user, loading, router])
+  }, [adminStatus, router])
 
   // Mostrar loading enquanto verifica autenticação e role
-  if (loading || checkingRole) {
+  if (adminStatus === 'loading' || adminStatus === 'no-profile') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -47,5 +73,10 @@ export default function ProtectedAdminRoute({ children }: ProtectedAdminRoutePro
   }
 
   // Se chegou aqui, o usuário é admin e pode acessar
-  return <>{children}</>
+  if (adminStatus === 'admin' || adminStatus === 'admin-cached') {
+    return <>{children}</>
+  }
+
+  // Fallback (não deveria chegar aqui)
+  return null
 }

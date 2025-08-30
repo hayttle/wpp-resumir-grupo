@@ -20,10 +20,10 @@ export default function Home() {
 
   useEffect(() => {
     // Se o usuário estiver autenticado, redirecionar para o dashboard
-    if (!loading && user) {
+    if (!loading && user?.id) {
       router.push('/dashboard')
     }
-  }, [user, loading, router])
+  }, [user?.id, loading, router])
 
   // Se não há configuração do Supabase, mostrar mensagem de erro
   if (hasError) {

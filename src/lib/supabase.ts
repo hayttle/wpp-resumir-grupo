@@ -10,12 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-// Cliente para o browser com cookies automáticos
+// Cliente para o browser com cookies automáticos - configuração menos agressiva
 export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: false, // Desabilitar detecção automática de sessão na URL
+    flowType: 'pkce' // Usar PKCE flow que é mais estável
   }
 })
 

@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -13,11 +13,16 @@ export function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
+  // Estabilizar verificação de autenticação
+  const isAuthenticated = useMemo(() => {
+    return !loading && !!user
+  }, [loading, user?.id])
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
     }
-  }, [user, loading, router])
+  }, [isAuthenticated, loading, router])
 
   if (loading) {
     return (
