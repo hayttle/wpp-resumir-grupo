@@ -5,7 +5,7 @@ import type { NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   // Apenas para rotas da API
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    console.log('🔧 Middleware: Interceptando rota:', request.nextUrl.pathname)
+
     
     // Criar cliente Supabase para verificar cookies
     const supabase = createServerClient(
@@ -25,11 +25,7 @@ export async function middleware(request: NextRequest) {
 
     try {
       const { data: { user }, error } = await supabase.auth.getUser()
-      console.log('🔧 Middleware: Status da autenticação:', { 
-        user: user?.id, 
-        error: error?.message,
-        cookies: request.cookies.getAll().map(c => c.name)
-      })
+
     } catch (err) {
       console.error('❌ Middleware: Erro ao verificar autenticação:', err)
     }

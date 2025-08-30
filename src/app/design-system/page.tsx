@@ -20,7 +20,7 @@ export default function DesignSystemPage() {
   }
 
   const handleButtonClick = (variant: string) => {
-    console.log(`Botão ${variant} clicado!`)
+    // Botão clicado: ${variant}
   }
 
   return (

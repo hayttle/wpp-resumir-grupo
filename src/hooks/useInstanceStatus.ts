@@ -22,12 +22,10 @@ export function useInstanceStatus() {
   const updateInstanceStatus = useCallback(async () => {
     try {
       setUpdatingStatus(true)
-      console.log('🔄 Atualizando status da instância...')
       
       const updatedInstance = await InstanceService.updateInstanceStatus()
       if (updatedInstance) {
         setInstance(updatedInstance)
-        console.log('✅ Status da instância atualizado:', updatedInstance.status)
         return updatedInstance
       }
     } catch (error) {
@@ -47,7 +45,7 @@ export function useInstanceStatus() {
         try {
           await updateInstanceStatus()
         } catch (error) {
-          console.log('⚠️ Erro na atualização automática inicial:', error)
+
         }
       }, 1000)
     }

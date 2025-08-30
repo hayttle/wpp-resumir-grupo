@@ -119,7 +119,7 @@ export default function AdminGroupsManager() {
       setEditingGroup(null)
       setIsEditing(false)
 
-      console.log('Grupo atualizado com sucesso!')
+
     } catch (error) {
       console.error('Erro ao atualizar grupo:', error)
       alert('Erro ao atualizar grupo. Tente novamente.')
@@ -158,7 +158,7 @@ export default function AdminGroupsManager() {
       // Remover da lista local
       setGroups(prev => prev.filter(g => g.id !== group.id))
 
-      console.log('Grupo deletado com sucesso!')
+
     } catch (error) {
       console.error('Erro ao deletar grupo:', error)
       alert('Erro ao deletar grupo. Tente novamente.')
@@ -203,7 +203,7 @@ export default function AdminGroupsManager() {
           g.id === group.id ? result.group : g
         ))
 
-        console.log(`Grupo ${result.group.active ? 'ativado' : 'desativado'} com sucesso!`)
+
       }
     } catch (error) {
       console.error('Erro ao alterar status do grupo:', error)

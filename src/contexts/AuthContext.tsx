@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const isFirstUser = allUsers.length === 0
         const defaultRole = isFirstUser ? 'admin' : 'user'
 
-        console.log(`🔄 Criando usuário com role: ${defaultRole} (${isFirstUser ? 'primeiro usuário' : 'usuário comum'})`)
+
 
         // Criar perfil no banco de dados
         const { error: insertError } = await supabase
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log(`✅ Perfil criado com sucesso (role: ${defaultRole})`)
+
 
         // Buscar o perfil criado para atualizar o estado
         await fetchUserProfile(user.id)
@@ -148,7 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Erro ao atualizar perfil:', updateError)
           return
         }
-        console.log('✅ Perfil atualizado com sucesso')
+
 
         // Buscar o perfil atualizado para atualizar o estado
         await fetchUserProfile(user.id)

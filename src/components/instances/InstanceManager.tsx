@@ -24,18 +24,10 @@ export default function InstanceManager() {
     let intervalId: NodeJS.Timeout | null = null
 
     if (instance?.status === 'connecting') {
-      console.log('🔄 Iniciando verificação automática de status...')
-
       intervalId = setInterval(async () => {
-        console.log('🔄 Verificação automática de status...')
         try {
           await updateInstanceStatus()
           if (instance && instance.status !== 'connecting') {
-            console.log('🔄 Status mudou automaticamente:', instance.status)
-
-            if (instance.status === 'open') {
-              console.log('🎉 WhatsApp conectado automaticamente!')
-            }
           }
         } catch (error) {
           console.error('❌ Erro na verificação automática:', error)
@@ -45,7 +37,6 @@ export default function InstanceManager() {
 
     return () => {
       if (intervalId) {
-        console.log('🔄 Parando verificação automática de status...')
         clearInterval(intervalId)
       }
     }
@@ -57,13 +48,10 @@ export default function InstanceManager() {
   const connectInstance = async () => {
     try {
       setConnecting(true)
-      console.log('🔧 Conectando instância...')
 
       const updatedInstance = await InstanceService.connectInstance()
       // Recarregar a instância após conectar
       await updateInstanceStatus()
-
-      console.log('✅ Instância conectada:', updatedInstance)
     } catch (error) {
       console.error('❌ Erro ao conectar instância:', error)
       alert('Erro ao conectar instância. Tente novamente.')
@@ -75,13 +63,10 @@ export default function InstanceManager() {
   const disconnectInstance = async () => {
     try {
       setConnecting(true)
-      console.log('🔌 Desconectando instância...')
 
       const updatedInstance = await InstanceService.disconnectInstance()
       // Recarregar a instância após desconectar
       await updateInstanceStatus()
-
-      console.log('✅ Instância desconectada:', updatedInstance)
     } catch (error) {
       console.error('❌ Erro ao desconectar instância:', error)
       alert('Erro ao desconectar instância. Tente novamente.')
@@ -93,7 +78,6 @@ export default function InstanceManager() {
   const createInstance = async () => {
     try {
       setCreatingInstance(true)
-      console.log('🔧 Criando instância...')
 
       if (!user?.user_metadata?.name || !user?.user_metadata?.phone_number) {
         alert('Nome e telefone são necessários para criar a instância. Atualize seu perfil primeiro.')
@@ -114,7 +98,6 @@ export default function InstanceManager() {
       if (newInstance) {
         // Recarregar a instância após criar
         await updateInstanceStatus()
-        console.log('✅ Instância criada com sucesso:', newInstance)
       } else {
         alert('Erro ao criar instância. Tente novamente.')
       }

@@ -15,14 +15,9 @@ export function InstanceDebug() {
   const [authTest, setAuthTest] = useState<any>(null)
 
   useEffect(() => {
-    console.log('🔧 InstanceDebug: useEffect executado, user:', user)
-
     // Buscar instância do usuário atual
     if (user) {
-      console.log('🔧 InstanceDebug: Usuário encontrado, carregando instância...')
       loadUserInstance()
-    } else {
-      console.log('🔧 InstanceDebug: Usuário não encontrado')
     }
   }, [user])
 
@@ -32,7 +27,6 @@ export function InstanceDebug() {
       return
     }
 
-    console.log('🔧 InstanceDebug: loadUserInstance iniciado')
     setLoading(true)
     setError(null)
 
@@ -53,7 +47,6 @@ export function InstanceDebug() {
       setError('Erro ao buscar instância')
       setDebugInfo(`Erro: ${err}`)
     } finally {
-      console.log('🔧 InstanceDebug: loadUserInstance finalizado')
       setLoading(false)
     }
   }

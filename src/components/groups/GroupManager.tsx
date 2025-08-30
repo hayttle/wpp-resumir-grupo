@@ -54,7 +54,6 @@ export default function GroupManager() {
 
     try {
       setFetchingGroups(true)
-      console.log('🔍 Buscando grupos da instância:', instance.instance_name)
 
       const fetchedGroups = await GroupService.fetchAllGroups(instance.instance_name)
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
@@ -64,7 +63,7 @@ export default function GroupManager() {
       }))
       setGroups(groupsWithStatus)
 
-      console.log('✅ Grupos buscados:', groupsWithStatus)
+
     } catch (error) {
       console.error('❌ Erro ao buscar grupos:', error)
       alert('Erro ao buscar grupos. Verifique se sua instância está conectada.')
@@ -75,7 +74,7 @@ export default function GroupManager() {
 
   const selectGroup = async (group: WhatsAppGroup) => {
     try {
-      console.log('✅ Selecionando grupo:', group.subject)
+
 
       const groupSelection = await GroupService.saveGroupSelection({
         user_id: user!.id,
@@ -96,7 +95,7 @@ export default function GroupManager() {
         // Adicionar à lista de grupos selecionados
         setSelectedGroups(prev => [groupSelection, ...prev])
 
-        console.log('✅ Grupo selecionado com sucesso:', groupSelection)
+
       }
     } catch (error) {
       console.error('❌ Erro ao selecionar grupo:', error)
@@ -110,7 +109,7 @@ export default function GroupManager() {
 
   const deselectGroup = async (groupSelection: GroupSelection) => {
     try {
-      console.log('❌ Desselecionando grupo:', groupSelection.group_name)
+
 
       const success = await GroupService.removeGroupSelection(groupSelection.group_id)
 
@@ -125,7 +124,7 @@ export default function GroupManager() {
           )
         )
 
-        console.log('✅ Grupo desselecionado com sucesso:', groupSelection.group_name)
+
       } else {
         alert('Erro ao desselecionar grupo. Tente novamente.')
       }

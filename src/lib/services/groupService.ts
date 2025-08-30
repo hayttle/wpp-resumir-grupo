@@ -5,7 +5,7 @@ export class GroupService {
   // Buscar todos os grupos da instância conectada
   static async fetchAllGroups(instanceName: string): Promise<WhatsAppGroup[]> {
     try {
-      console.log('🔍 GroupService: Buscando grupos da instância:', instanceName)
+
       
       const response = await fetch('/api/groups', {
         method: 'POST',
@@ -25,7 +25,7 @@ export class GroupService {
       }
 
       const result = await response.json()
-      console.log('✅ GroupService: Grupos buscados:', result.groups)
+
       
       return result.groups || []
     } catch (error) {
@@ -37,7 +37,7 @@ export class GroupService {
   // Salvar seleção de grupo no banco de dados
   static async saveGroupSelection(groupSelection: GroupSelectionInsert): Promise<GroupSelection | null> {
     try {
-      console.log('💾 GroupService: Salvando seleção de grupo:', groupSelection)
+
       
       const response = await fetch('/api/groups', {
         method: 'POST',
@@ -57,7 +57,7 @@ export class GroupService {
       }
 
       const result = await response.json()
-      console.log('✅ GroupService: Seleção de grupo salva:', result.groupSelection)
+
       
       return result.groupSelection
     } catch (error) {
@@ -69,7 +69,7 @@ export class GroupService {
   // Buscar seleções de grupos do usuário
   static async getUserGroupSelections(): Promise<GroupSelection[]> {
     try {
-      console.log('🔍 GroupService: Buscando seleções de grupos do usuário')
+
       
       const response = await fetch('/api/groups')
       
@@ -80,7 +80,7 @@ export class GroupService {
       }
 
       const result = await response.json()
-      console.log('✅ GroupService: Seleções de grupos buscadas:', result.groupSelections)
+
       
       return result.groupSelections || []
     } catch (error) {
@@ -134,7 +134,7 @@ export class GroupService {
   // Remover seleção de grupo via API (método preferido)
   static async removeGroupSelection(groupId: string): Promise<boolean> {
     try {
-      console.log('🗑️ GroupService: Removendo seleção de grupo:', groupId)
+
       
       const response = await fetch('/api/groups', {
         method: 'POST',
@@ -154,7 +154,7 @@ export class GroupService {
       }
 
       const result = await response.json()
-      console.log('✅ GroupService: Seleção de grupo removida:', result)
+
       
       return true
     } catch (error) {

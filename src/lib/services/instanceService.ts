@@ -5,7 +5,7 @@ export class InstanceService {
   // Criar nova instância via API Route (server-side)
   static async createInstance(userId: string, instanceName: string, phoneNumber: string): Promise<Instance | null> {
     try {
-      console.log('🔧 InstanceService: Criando instância via API Route...')
+
       
       const response = await fetch('/api/instances', {
         method: 'POST',
@@ -25,7 +25,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Instância criada com sucesso:', result.instance)
+
       
       return result.instance
     } catch (error) {
@@ -58,7 +58,7 @@ export class InstanceService {
   // Buscar instância do usuário atual via API Route
   static async getCurrentUserInstance(): Promise<Instance | null> {
     try {
-      console.log('🔧 InstanceService: Buscando instância via API Route...')
+
       
       const response = await fetch('/api/instances')
       
@@ -69,7 +69,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Instância buscada:', result.instance)
+
       
       return result.instance
     } catch (error) {
@@ -127,7 +127,7 @@ export class InstanceService {
   // Conectar instância (obter novo QR Code)
   static async connectInstance(): Promise<Instance | null> {
     try {
-      console.log('🔧 InstanceService: Conectando instância...')
+
       
       const response = await fetch('/api/instances', {
         method: 'PUT',
@@ -146,7 +146,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Instância conectada:', result.instance)
+
       
       return result.instance
     } catch (error) {
@@ -158,7 +158,7 @@ export class InstanceService {
   // Atualizar status da instância via Evolution API
   static async updateInstanceStatus(): Promise<Instance | null> {
     try {
-      console.log('🔧 InstanceService: Atualizando status da instância...')
+
       
       const response = await fetch('/api/instances', {
         method: 'PUT',
@@ -177,7 +177,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Status atualizado:', result.instance)
+
       
       return result.instance
     } catch (error) {
@@ -189,7 +189,7 @@ export class InstanceService {
   // Desconectar instância WhatsApp
   static async disconnectInstance(): Promise<Instance | null> {
     try {
-      console.log('🔧 InstanceService: Desconectando instância...')
+
       
       const response = await fetch('/api/instances', {
         method: 'PUT',
@@ -208,7 +208,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Instância desconectada:', result.instance)
+
       
       return result.instance
     } catch (error) {
@@ -230,7 +230,7 @@ export class InstanceService {
   // Verificar se usuário já tem instância via API Route
   static async userHasInstance(userId: string): Promise<boolean> {
     try {
-      console.log('🔧 InstanceService: Verificando se usuário tem instância via API Route...')
+
       
       const response = await fetch('/api/instances/check')
       
@@ -241,7 +241,7 @@ export class InstanceService {
       }
 
       const result = await response.json()
-      console.log('✅ InstanceService: Verificação concluída:', result.hasInstance)
+
       
       return result.hasInstance
     } catch (error) {

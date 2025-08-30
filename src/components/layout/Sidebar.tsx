@@ -86,11 +86,9 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
   const handleLogout = async () => {
     try {
-      console.log('🔄 Iniciando logout no Sidebar...')
       setIsLoggingOut(true)
 
       await logout()
-      console.log('✅ Logout realizado com sucesso, redirecionando...')
 
       // Redirecionar para a página de login após logout
       window.location.href = '/auth/login'

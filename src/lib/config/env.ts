@@ -19,7 +19,7 @@ export const validateEnv = () => {
     return false
   }
   
-  console.log('✅ Todas as variáveis de ambiente obrigatórias estão configuradas')
+
   return true
 }
 

@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 // Função para inicializar o banco com dados padrão
 export async function initializeDatabase() {
   try {
-    console.log('🔄 Inicializando banco de dados...')
+
 
     // Verificar se já existem planos
     const { data: existingPlans } = await supabase
@@ -12,7 +12,7 @@ export async function initializeDatabase() {
       .limit(1)
 
     if (existingPlans && existingPlans.length > 0) {
-      console.log('✅ Banco já inicializado')
+
       return
     }
 
@@ -64,11 +64,11 @@ export async function initializeDatabase() {
       if (error) {
         console.error('❌ Erro ao criar plano:', plan.name, error)
       } else {
-        console.log('✅ Plano criado:', plan.name)
+
       }
     }
 
-    console.log('✅ Banco de dados inicializado com sucesso!')
+
   } catch (error) {
     console.error('❌ Erro ao inicializar banco:', error)
   }
@@ -87,7 +87,7 @@ export async function checkDatabaseConnection() {
       return false
     }
 
-    console.log('✅ Conexão com banco estabelecida')
+
     return true
   } catch (error) {
     console.error('❌ Erro ao verificar conexão:', error)
@@ -98,7 +98,7 @@ export async function checkDatabaseConnection() {
 // Função para limpar dados de teste
 export async function clearTestData() {
   try {
-    console.log('🧹 Limpando dados de teste...')
+
 
     // Limpar mensagens e resumos (dados temporários)
     const { error: messagesError } = await supabase
@@ -114,7 +114,7 @@ export async function clearTestData() {
     if (messagesError) console.error('❌ Erro ao limpar mensagens:', messagesError)
     if (summariesError) console.error('❌ Erro ao limpar resumos:', summariesError)
 
-    console.log('✅ Dados de teste limpos')
+
   } catch (error) {
     console.error('❌ Erro ao limpar dados de teste:', error)
   }
