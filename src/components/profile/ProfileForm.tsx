@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { User, Mail, Shield, Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+
+import { User, Save, Loader2, CheckCircle, AlertCircle, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { UserService } from '@/lib/services/userService'
 
@@ -24,7 +24,21 @@ export default function ProfileForm() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isChangingPassword, setIsChangingPassword] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Estados para mudança de senha
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  })
 
   // Carregar dados do perfil
   useEffect(() => {
@@ -42,6 +56,87 @@ export default function ProfileForm() {
       ...prev,
       [field]: value
     }))
+  }
+
+  const handlePasswordInputChange = (field: keyof typeof passwordData, value: string) => {
+    setPasswordData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }))
+  }
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validações
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'Todos os campos são obrigatórios' })
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'A nova senha e sua confirmação não coincidem' })
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'A nova senha deve ter pelo menos 6 caracteres' })
+      return
+    }
+
+    setIsChangingPassword(true)
+    setPasswordMessage(null)
+
+    try {
+      // Usando Supabase Auth para atualizar a senha
+      const { supabase } = await import('@/lib/supabase')
+
+      // Primeiro, verifica se a senha atual está correta fazendo re-autenticação
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: passwordData.currentPassword
+      })
+
+      if (signInError) {
+        setPasswordMessage({ type: 'error', text: 'Senha atual incorreta' })
+        return
+      }
+
+      // Se chegou aqui, a senha atual está correta, agora atualiza para a nova
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      })
+
+      if (error) {
+        setPasswordMessage({ type: 'error', text: 'Erro ao alterar senha. Tente novamente.' })
+        return
+      }
+
+      setPasswordMessage({ type: 'success', text: 'Senha alterada com sucesso!' })
+
+      // Limpar os campos
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+
+      // Limpar mensagem após 3 segundos
+      setTimeout(() => setPasswordMessage(null), 3000)
+
+    } catch (error) {
+      console.error('Erro ao alterar senha:', error)
+      setPasswordMessage({ type: 'error', text: 'Erro ao alterar senha. Tente novamente.' })
+    } finally {
+      setIsChangingPassword(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,14 +179,6 @@ export default function ProfileForm() {
     } finally {
       setIsSaving(false)
     }
-  }
-
-  const getRoleBadgeVariant = (role: string) => {
-    return role === 'admin' ? 'default' : 'secondary'
-  }
-
-  const getRoleDisplayName = (role: string) => {
-    return role === 'admin' ? 'Administrador' : 'Usuário'
   }
 
   if (isLoading) {
@@ -157,24 +244,6 @@ export default function ProfileForm() {
               </p>
             </div>
 
-            {/* Role (somente leitura para usuários normais) */}
-            <div className="space-y-2">
-              <label htmlFor="role" className="text-sm font-medium text-gray-700">
-                Tipo de Conta
-              </label>
-              <div className="flex items-center gap-3">
-                <Badge variant={getRoleBadgeVariant(profileData.role)}>
-                  {getRoleDisplayName(profileData.role)}
-                </Badge>
-                <p className="text-xs text-gray-500">
-                  {user?.profile?.role === 'admin'
-                    ? 'Administradores podem alterar o tipo de conta'
-                    : 'Apenas administradores podem alterar o tipo de conta'
-                  }
-                </p>
-              </div>
-            </div>
-
             {/* Botão de Salvar */}
             <div className="pt-4">
               <Button
@@ -199,11 +268,161 @@ export default function ProfileForm() {
         </CardContent>
       </Card>
 
+      {/* Alteração de Senha */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Alterar Senha
+          </CardTitle>
+          <CardDescription>
+            Mantenha sua conta segura alterando sua senha regularmente
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+            {/* Senha Atual */}
+            <div className="space-y-2">
+              <label htmlFor="currentPassword" className="text-sm font-medium text-gray-700">
+                Senha Atual
+              </label>
+              <div className="relative">
+                <Input
+                  id="currentPassword"
+                  type={showPasswords.current ? "text" : "password"}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => handlePasswordInputChange('currentPassword', e.target.value)}
+                  placeholder="Digite sua senha atual"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('current')}
+                >
+                  {showPasswords.current ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Nova Senha */}
+            <div className="space-y-2">
+              <label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
+                Nova Senha
+              </label>
+              <div className="relative">
+                <Input
+                  id="newPassword"
+                  type={showPasswords.new ? "text" : "password"}
+                  value={passwordData.newPassword}
+                  onChange={(e) => handlePasswordInputChange('newPassword', e.target.value)}
+                  placeholder="Digite sua nova senha"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('new')}
+                >
+                  {showPasswords.new ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                A senha deve ter pelo menos 6 caracteres
+              </p>
+            </div>
+
+            {/* Confirmar Nova Senha */}
+            <div className="space-y-2">
+              <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
+                Confirmar Nova Senha
+              </label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showPasswords.confirm ? "text" : "password"}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => handlePasswordInputChange('confirmPassword', e.target.value)}
+                  placeholder="Confirme sua nova senha"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => togglePasswordVisibility('confirm')}
+                >
+                  {showPasswords.confirm ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Botão de Alterar Senha */}
+            <div className="pt-4">
+              <Button
+                type="submit"
+                disabled={isChangingPassword}
+                className="w-full sm:w-auto"
+              >
+                {isChangingPassword ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Alterando...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4 mr-2" />
+                    Alterar Senha
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Mensagem de Feedback para Senha */}
+      {passwordMessage && (
+        <Card className={`border-l-4 ${passwordMessage.type === 'success'
+          ? 'border-l-green-500 bg-green-50'
+          : 'border-l-red-500 bg-red-50'
+          }`}>
+          <CardContent className="pt-6">
+            <div className={`flex items-center gap-3 ${passwordMessage.type === 'success' ? 'text-green-700' : 'text-red-700'
+              }`}>
+              {passwordMessage.type === 'success' ? (
+                <CheckCircle className="h-5 w-5" />
+              ) : (
+                <AlertCircle className="h-5 w-5" />
+              )}
+              <span className="font-medium">{passwordMessage.text}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Mensagens de Feedback */}
       {message && (
         <Card className={`border-l-4 ${message.type === 'success'
-            ? 'border-l-green-500 bg-green-50'
-            : 'border-l-red-500 bg-red-50'
+          ? 'border-l-green-500 bg-green-50'
+          : 'border-l-red-500 bg-red-50'
           }`}>
           <CardContent className="pt-6">
             <div className={`flex items-center gap-3 ${message.type === 'success' ? 'text-green-700' : 'text-red-700'
@@ -218,48 +437,6 @@ export default function ProfileForm() {
           </CardContent>
         </Card>
       )}
-
-      {/* Informações Adicionais */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Segurança da Conta
-          </CardTitle>
-          <CardDescription>
-            Informações sobre a segurança da sua conta
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4 text-gray-500" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Autenticação</div>
-                <div className="text-xs text-gray-500">Login via Supabase Auth</div>
-              </div>
-            </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Ativo
-            </Badge>
-          </div>
-
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-gray-500" />
-              <div>
-                <div className="text-sm font-medium text-gray-900">Última Atualização</div>
-                <div className="text-xs text-gray-500">
-                  {user?.profile?.updated_at
-                    ? new Date(user.profile.updated_at).toLocaleDateString('pt-BR')
-                    : 'Nunca'
-                  }
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

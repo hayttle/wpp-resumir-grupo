@@ -21,6 +21,23 @@ export function RegisterForm() {
   const { signUp } = useAuth()
   const router = useRouter()
 
+  // Traduzir mensagens de erro do Supabase
+  const translateError = (errorMessage: string): string => {
+    const translations: { [key: string]: string } = {
+      'Invalid login credentials': 'Credenciais de login inválidas',
+      'Email not confirmed': 'Email não confirmado',
+      'User not found': 'Usuário não encontrado',
+      'Too many requests': 'Muitas tentativas. Tente novamente mais tarde',
+      'Invalid email': 'Email inválido',
+      'Password is too short': 'Senha muito curta',
+      'Email already registered': 'Email já está cadastrado',
+      'Weak password': 'Senha muito fraca',
+      'User already registered': 'Usuário já está cadastrado'
+    }
+
+    return translations[errorMessage] || errorMessage
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -47,7 +64,7 @@ export function RegisterForm() {
       })
 
       if (error) {
-        setError(error.message)
+        setError(translateError(error.message))
       } else {
         setMessage('Cadastro realizado com sucesso! Redirecionando para login...')
 

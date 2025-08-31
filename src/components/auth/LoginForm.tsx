@@ -18,6 +18,22 @@ export function LoginForm() {
   const { signIn, resetPassword, user } = useAuth()
   const router = useRouter()
 
+  // Traduzir mensagens de erro do Supabase
+  const translateError = (errorMessage: string): string => {
+    const translations: { [key: string]: string } = {
+      'Invalid login credentials': 'Credenciais de login inválidas',
+      'Email not confirmed': 'Email não confirmado',
+      'User not found': 'Usuário não encontrado',
+      'Too many requests': 'Muitas tentativas. Tente novamente mais tarde',
+      'Invalid email': 'Email inválido',
+      'Password is too short': 'Senha muito curta',
+      'Email already registered': 'Email já está cadastrado',
+      'Weak password': 'Senha muito fraca'
+    }
+
+    return translations[errorMessage] || errorMessage
+  }
+
   // Redirecionar se já estiver logado
   useEffect(() => {
     if (user) {
@@ -35,7 +51,7 @@ export function LoginForm() {
       const { error } = await signIn(email, password)
 
       if (error) {
-        setError(error.message)
+        setError(translateError(error.message))
       } else {
         setMessage('Login realizado com sucesso! Redirecionando...')
 
@@ -65,7 +81,7 @@ export function LoginForm() {
       const { error } = await resetPassword(email)
 
       if (error) {
-        setError(error.message)
+        setError(translateError(error.message))
       } else {
         setMessage('Email de redefinição enviado! Verifique sua caixa de entrada.')
       }
