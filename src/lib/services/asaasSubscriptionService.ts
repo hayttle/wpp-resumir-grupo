@@ -363,6 +363,19 @@ export class AsaasSubscriptionService {
         Logger.info('AsaasSubscriptionService', 'Pagamento marcado como confirmado', { paymentId: payment.id })
       }
 
+      // Atualizar status da assinatura para active (se estava overdue)
+      const { error: subUpdateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'active' })
+        .eq('asaas_subscription_id', payment.subscription)
+
+      if (subUpdateError) throw subUpdateError
+
+      Logger.info('AsaasSubscriptionService', 'Status da assinatura atualizado para active', { 
+        paymentId: payment.id, 
+        subscriptionId: payment.subscription 
+      })
+
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao processar PAYMENT_CONFIRMED', { error, data })
       throw error
@@ -392,6 +405,19 @@ export class AsaasSubscriptionService {
       if (updateError) throw updateError
 
       Logger.info('AsaasSubscriptionService', 'Pagamento marcado como recebido', { paymentId: payment.id })
+
+      // Atualizar status da assinatura para active (se estava overdue)
+      const { error: subUpdateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'active' })
+        .eq('asaas_subscription_id', payment.subscription)
+
+      if (subUpdateError) throw subUpdateError
+
+      Logger.info('AsaasSubscriptionService', 'Status da assinatura atualizado para active', { 
+        paymentId: payment.id, 
+        subscriptionId: payment.subscription 
+      })
 
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao processar PAYMENT_RECEIVED', { error, data })

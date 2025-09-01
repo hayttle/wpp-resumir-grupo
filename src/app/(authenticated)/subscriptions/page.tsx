@@ -484,11 +484,10 @@ export default function SubscriptionsPage() {
                                           {payment.invoice_url && (payment.status === 'PENDING' || payment.status === 'OVERDUE') && (
                                             <button
                                               onClick={() => window.open(payment.invoice_url, '_blank')}
-                                              className={`text-xs text-white px-2 py-1 rounded ${
-                                                payment.status === 'OVERDUE' 
-                                                  ? 'bg-red-600 hover:bg-red-700' 
-                                                  : 'bg-green-600 hover:bg-green-700'
-                                              }`}
+                                              className={`text-xs text-white px-2 py-1 rounded ${payment.status === 'OVERDUE'
+                                                ? 'bg-red-600 hover:bg-red-700'
+                                                : 'bg-green-600 hover:bg-green-700'
+                                                }`}
                                               title={payment.status === 'OVERDUE' ? 'Pagar (Vencido)' : 'Pagar'}
                                             >
                                               {payment.status === 'OVERDUE' ? 'PAGAR (VENCIDO)' : 'PAGAR'}
