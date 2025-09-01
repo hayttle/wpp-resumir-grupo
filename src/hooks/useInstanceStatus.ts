@@ -46,21 +46,7 @@ export function useInstanceStatus() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Atualizar status apenas se uma instância foi carregada
-  useEffect(() => {
-    if (instance && !loading) {
-      // Aguardar um pouco antes de atualizar o status para evitar conflitos
-      const timeoutId = setTimeout(async () => {
-        try {
-          await updateInstanceStatus()
-        } catch (error) {
-          // Log apenas erros reais, não ausência de instância
-        }
-      }, 1000)
-      
-      return () => clearTimeout(timeoutId)
-    }
-  }, [instance, loading, updateInstanceStatus])
+
 
   return {
     instance,
