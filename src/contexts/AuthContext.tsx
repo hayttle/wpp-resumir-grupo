@@ -4,7 +4,6 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { InstanceService } from '@/lib/services/instanceService'
-import { AsaasService } from '@/lib/services/asaasService'
 
 // Tipo estendido para usuário autenticado com dados do banco
 interface AuthenticatedUser extends User {
@@ -183,64 +182,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Cadastro
   const signUp = async (email: string, password: string, userData: { name: string; phone_number?: string; cpf_cnpj?: string; person_type: 'individual' | 'company' }) => {
     try {
-      // Validar CPF/CNPJ obrigatório
-      if (!userData.cpf_cnpj) {
-        return { error: { message: 'CPF ou CNPJ é obrigatório para o cadastro' } }
-      }
-
-      // 1. Criar usuário no Supabase Auth
-      const { error: authError, data } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name: userData.name,
-            phone_number: userData.phone_number,
-            cpf_cnpj: userData.cpf_cnpj,
-            person_type: userData.person_type
-          }
-        }
+      // Usar API route para cadastro (que cria o customer no Asaas no servidor)
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          userData
+        })
       })
 
-      if (authError) {
-        return { error: authError }
-      }
+      const result = await response.json()
 
-      // 2. Se o cadastro foi bem-sucedido, criar customer no Asaas
-      if (data.user) {
-        try {
-          console.log('🔄 Criando customer no Asaas para usuário:', data.user.id)
-          
-          const customerData = {
-            name: userData.name,
-            email: email,
-            cpfCnpj: userData.cpf_cnpj,
-            personType: (userData.person_type === 'company' ? 'JURIDICA' : 'FISICA') as 'FISICA' | 'JURIDICA',
-            externalReference: data.user.id,
-            notificationDisabled: false
-          }
-
-          const asaasCustomer = await AsaasService.createCustomer(customerData)
-          console.log('✅ Customer criado no Asaas:', asaasCustomer.id)
-
-          // 3. Atualizar usuário com o customer_id do Asaas
-          const { error: updateError } = await supabase
-            .from('users')
-            .update({ asaas_customer_id: asaasCustomer.id })
-            .eq('id', data.user.id)
-
-          if (updateError) {
-            console.error('❌ Erro ao salvar customer_id:', updateError)
-            // Não falhar o cadastro se não conseguir salvar o customer_id
-          } else {
-            console.log('✅ Customer_id salvo no banco:', asaasCustomer.id)
-          }
-
-        } catch (asaasError) {
-          console.error('❌ Erro ao criar customer no Asaas:', asaasError)
-          // Não falhar o cadastro se não conseguir criar no Asaas
-          // O customer pode ser criado posteriormente quando o usuário fizer a primeira assinatura
-        }
+      if (!response.ok) {
+        return { error: result.error }
       }
 
       return { error: null }
