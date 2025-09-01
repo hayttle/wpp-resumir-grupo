@@ -19,6 +19,7 @@ export const serverEnv = {
   ASAAS_API_KEY: process.env.ASAAS_API_KEY || '',
   ASAAS_BASE_URL: process.env.ASAAS_BASE_URL || 'https://api-sandbox.asaas.com',
   ASAAS_SANDBOX: process.env.ASAAS_SANDBOX === 'true' || true,
+  ASAAS_PLAN_URL: process.env.ASAAS_PLAN_URL || '',
 }
 
 // Função para verificar variáveis de ambiente do servidor
