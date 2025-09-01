@@ -50,6 +50,19 @@ export default function GroupManager() {
   const [selectionReason, setSelectionReason] = useState<string>()
   const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
 
+  // Função para recalcular a capacidade de seleção de grupos
+  const recalculateSelectionCapability = useCallback(async () => {
+    if (!user) return
+
+    try {
+      const result = await GroupService.fetchAllGroups(instance?.instance_name || '')
+      setCanSelectNewGroups(result.canSelectNewGroups)
+      setSelectionReason(result.reason)
+    } catch (error) {
+      console.error('❌ Erro ao recalcular capacidade de seleção:', error)
+    }
+  }, [user, instance?.instance_name])
+
   // Atualizar status da instância apenas uma vez no carregamento da página
   useEffect(() => {
     if (instance && user && !hasUpdatedInstanceStatus) {
@@ -113,6 +126,8 @@ export default function GroupManager() {
         // Adicionar à lista de grupos selecionados
         setSelectedGroups(prev => [groupSelection, ...prev])
 
+        // Recalcular capacidade de seleção após adicionar grupo
+        await recalculateSelectionCapability()
 
       }
     } catch (error: any) {
@@ -142,10 +157,12 @@ export default function GroupManager() {
         // Atualizar lista de grupos com status de seleção
         setGroups(prevGroups =>
           prevGroups.map(g =>
-            g.id === groupSelection.group_id ? { ...g, isSelected: false } : g
+            g.id === groupSelection.group_id ? { ...g, isSelected: false, canSelect: true } : g
           )
         )
 
+        // Recalcular capacidade de seleção após remover grupo
+        await recalculateSelectionCapability()
 
       } else {
         alert('Erro ao desselecionar grupo. Tente novamente.')
