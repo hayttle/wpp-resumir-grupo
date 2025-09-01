@@ -138,15 +138,7 @@ export default function GroupManager() {
       }
     } catch (error: any) {
       console.error('❌ Erro ao selecionar grupo:', error)
-
-      // Tratar erro específico de limite de grupos
-      if (error?.error === 'Limite de 1 grupos atingido') {
-        alert('⚠️ Você atingiu o limite de grupos permitido pelo seu plano atual.\n\nPara selecionar mais grupos, adquira mais assinatura na página "Assinaturas".')
-      } else if (error instanceof Error && error.message.includes('já foi selecionado')) {
-        alert('Este grupo já foi selecionado anteriormente.')
-      } else {
-        alert('Erro ao selecionar grupo. Tente novamente.')
-      }
+      // Erro tratado silenciosamente - o usuário verá o feedback através da UI
     }
   }
 
