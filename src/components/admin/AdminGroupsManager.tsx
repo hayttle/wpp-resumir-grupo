@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Users, Search, Plus, Edit, Trash2, MessageSquare, Calendar, User } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
+import { formatDate } from '@/lib/utils/formatters'
 
 interface AdminGroup {
   id: string
@@ -213,15 +214,7 @@ export default function AdminGroupsManager() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+
 
   // Estatísticas dos grupos
   const totalGroups = groups.length

@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Logger } from '@/lib/utils/logger'
 
-const logger = new Logger('PaymentsAPI')
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -16,7 +14,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    logger.info('Buscando pagamentos do usuário', { userId })
+    Logger.info('PaymentsAPI', 'Buscando pagamentos do usuário', { userId })
 
     const { data: payments, error } = await supabaseAdmin
       .from('payments')
@@ -25,16 +23,17 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      logger.error('Erro ao buscar pagamentos', { error, userId })
+      Logger.error('PaymentsAPI', 'Erro ao buscar pagamentos', { error, userId })
       return NextResponse.json(
         { error: 'Erro ao buscar pagamentos' },
         { status: 500 }
       )
     }
 
-    logger.info('Pagamentos encontrados', { 
+    Logger.info('PaymentsAPI', 'Pagamentos encontrados', { 
       userId, 
-      count: payments?.length || 0 
+      count: payments?.length || 0,
+      payments: payments?.map(p => ({ id: p.id, status: p.status, asaas_payment_id: p.asaas_payment_id }))
     })
 
     return NextResponse.json({
@@ -42,7 +41,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error('Erro interno ao buscar pagamentos', { error })
+    Logger.error('PaymentsAPI', 'Erro interno ao buscar pagamentos', { error })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

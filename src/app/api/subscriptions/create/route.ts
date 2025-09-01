@@ -3,13 +3,11 @@ import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionServic
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { Logger } from '@/lib/utils/logger'
 
-const logger = new Logger('SubscriptionCreateAPI')
-
 export async function POST(request: NextRequest) {
   try {
     const { userId, planId, groupId } = await request.json()
 
-    logger.info('Criando nova assinatura', { userId, planId, groupId })
+    Logger.info('SubscriptionCreateAPI', 'Criando nova assinatura', { userId, planId, groupId })
 
     // Validar dados de entrada
     if (!userId || !planId) {
@@ -27,7 +25,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (userError || !user) {
-      logger.error('Usuário não encontrado', { userId, error: userError })
+      Logger.error('SubscriptionCreateAPI', 'Usuário não encontrado', { userId, error: userError })
       return NextResponse.json(
         { error: 'Usuário não encontrado' },
         { status: 404 }
@@ -36,13 +34,13 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o plano existe
     const { data: plan, error: planError } = await supabaseAdmin
-      .from('subscription_plans')
+      .from('plans')
       .select('*')
       .eq('id', planId)
       .single()
 
     if (planError || !plan) {
-      logger.error('Plano não encontrado', { planId, error: planError })
+      Logger.error('SubscriptionCreateAPI', 'Plano não encontrado', { planId, error: planError })
       return NextResponse.json(
         { error: 'Plano não encontrado' },
         { status: 404 }
@@ -51,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar se o usuário já tem asaas_customer_id
     if (!user.asaas_customer_id) {
-      logger.error('Usuário não tem customer_id do Asaas', { userId })
+      Logger.error('SubscriptionCreateAPI', 'Usuário não tem customer_id do Asaas', { userId })
       return NextResponse.json(
         { error: 'Usuário não possui customer_id do Asaas' },
         { status: 400 }
@@ -65,7 +63,7 @@ export async function POST(request: NextRequest) {
       groupId
     )
 
-    logger.info('Assinatura criada com sucesso', {
+    Logger.info('SubscriptionCreateAPI', 'Assinatura criada com sucesso', {
       subscriptionId: subscription.id,
       asaasSubscriptionId: asaasSubscription.id,
       userId,
@@ -93,7 +91,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    logger.error('Erro ao criar assinatura', { error })
+    Logger.error('SubscriptionCreateAPI', 'Erro ao criar assinatura', { error })
     
     return NextResponse.json(
       { 

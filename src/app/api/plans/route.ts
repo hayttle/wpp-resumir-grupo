@@ -1,59 +1,33 @@
 // API Routes para gerenciar plano único de assinatura
 import { NextRequest, NextResponse } from 'next/server'
-import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionService'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { Logger } from '@/lib/utils/logger'
 
-// GET - Buscar o plano único disponível
 export async function GET(request: NextRequest) {
   try {
-    let plan = await AsaasSubscriptionService.getSinglePlan()
+    Logger.info('PlansAPI', 'Buscando planos disponíveis')
 
-    // Se não há plano, criar um plano padrão
-    if (!plan) {
-      console.log('📋 Criando plano padrão...')
-      
-      const defaultPlan = {
-        name: 'Plano Básico',
-        description: 'Acesso a 1 grupo do WhatsApp',
-        price: 29.90,
-        billing_type: 'MONTHLY' as const,
-        features: [
-          'Monitoramento de 1 grupo',
-          'Resumos automáticos diários',
-          'Histórico de 30 dias',
-          'Suporte por email'
-        ]
-      }
+    const { data: plans, error } = await supabaseAdmin
+      .from('plans')
+      .select('*')
+      .order('price', { ascending: true })
 
-      const { data: newPlan, error } = await supabaseAdmin
-        .from('subscription_plans')
-        .insert([defaultPlan])
-        .select()
-        .single()
-
-      if (error) {
-        console.error('❌ Erro ao criar plano padrão:', error)
-        return NextResponse.json(
-          { error: 'Erro ao criar plano padrão' },
-          { status: 500 }
-        )
-      }
-
-      plan = newPlan
-      console.log('✅ Plano padrão criado:', plan?.id)
-    }
-
-    if (!plan) {
+    if (error) {
+      Logger.error('PlansAPI', 'Erro ao buscar planos', { error })
       return NextResponse.json(
-        { error: 'Não foi possível criar ou encontrar plano' },
+        { error: 'Erro ao buscar planos' },
         { status: 500 }
       )
     }
 
-    return NextResponse.json({ plans: [plan] })
+    Logger.info('PlansAPI', 'Planos encontrados', { count: plans?.length || 0 })
+
+    return NextResponse.json({
+      plans: plans || []
+    })
 
   } catch (error) {
-    console.error('Erro ao buscar plano:', error)
+    Logger.error('PlansAPI', 'Erro interno ao buscar planos', { error })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

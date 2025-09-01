@@ -10,6 +10,7 @@ import { GroupService } from '@/lib/services/groupService'
 import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 import { useAuth } from '@/contexts/AuthContext'
 import { WhatsAppGroup, GroupSelection } from '@/types/database'
+import { formatDateTime } from '@/lib/utils/formatters'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
@@ -140,15 +141,7 @@ export default function GroupManager() {
     }
   }
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+
 
   // Filtrar grupos baseado no texto de busca
   const filteredGroups = groups.filter(group =>
@@ -553,7 +546,7 @@ export default function GroupManager() {
                   <div>
                     <h4 className="font-medium">{selection.group_name}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Selecionado em {new Date(selection.created_at).toLocaleDateString('pt-BR')}
+                      Selecionado em {formatDateTime(selection.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

@@ -3,17 +3,18 @@
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Badge, StatusBadge } from '@/components/ui'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/toast'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { formatDate, formatCurrency } from '@/lib/utils/formatters'
 
 interface Plan {
   id: string
   name: string
   description: string
   price: number
-  billing_type: 'MONTHLY' | 'YEARLY'
+  max_groups: number
   features: string[]
 }
 
@@ -27,15 +28,12 @@ interface Subscription {
   description: string
   group_id?: string
   asaas_subscription_id?: string
-  subscription_plans?: {
-    name: string
-    description: string
-    features: string[]
-  }
+  plan_id?: string
 }
 
 interface Payment {
   id: string
+  subscription_id: string
   value: number
   status: 'PENDING' | 'CONFIRMED' | 'OVERDUE' | 'REFUNDED' | 'CANCELLED' | 'RECEIVED' | 'RECEIVED_IN_CASH_APP'
   due_date: string
@@ -43,12 +41,13 @@ interface Payment {
   description?: string
   invoice_url?: string
   bank_slip_url?: string
+  transaction_receipt_url?: string
 }
 
 export default function SubscriptionsPage() {
   const { user } = useAuth()
   const { addToast } = useToast()
-  
+
   const [plans, setPlans] = useState<Plan[]>([])
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([])
   const [payments, setPayments] = useState<Payment[]>([])
@@ -57,6 +56,7 @@ export default function SubscriptionsPage() {
   const [cancellingSubscription, setCancellingSubscription] = useState<string | null>(null)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [selectedSubscription, setSelectedSubscription] = useState<Subscription | null>(null)
+  const [expandedPayments, setExpandedPayments] = useState<Set<string>>(new Set())
 
   // Buscar planos disponíveis
   const fetchPlans = async () => {
@@ -74,53 +74,55 @@ export default function SubscriptionsPage() {
           type: 'error'
         })
       }
-          } catch (error) {
-        console.error('Erro ao buscar planos:', error)
+    } catch (error) {
+      console.error('Erro ao buscar planos:', error)
+      addToast({
+        title: 'Erro',
+        message: 'Erro ao conectar com o servidor',
+        type: 'error'
+      })
+    }
+  }
+
+  // Buscar assinaturas do usuário
+  const fetchSubscriptions = async () => {
+    if (!user?.id) return
+
+    try {
+      const response = await fetch(`/api/subscriptions?userId=${user.id}`)
+      const data = await response.json()
+
+      if (response.ok) {
+        setSubscriptions(data.subscriptions || [])
+      } else {
+        console.error('Erro ao buscar assinaturas:', data.error)
         addToast({
           title: 'Erro',
-          message: 'Erro ao conectar com o servidor',
+          message: 'Não foi possível carregar suas assinaturas',
           type: 'error'
         })
       }
+    } catch (error) {
+      console.error('Erro ao buscar assinaturas:', error)
+      addToast({
+        title: 'Erro',
+        message: 'Erro ao conectar com o servidor',
+        type: 'error'
+      })
     }
-
-    // Buscar assinaturas do usuário
-    const fetchSubscriptions = async () => {
-      if (!user?.id) return
-
-      try {
-        const response = await fetch(`/api/subscriptions?userId=${user.id}`)
-        const data = await response.json()
-
-        if (response.ok) {
-          setSubscriptions(data.subscriptions || [])
-        } else {
-          console.error('Erro ao buscar assinaturas:', data.error)
-          addToast({
-            title: 'Erro',
-            message: 'Não foi possível carregar suas assinaturas',
-            type: 'error'
-          })
-        }
-      } catch (error) {
-        console.error('Erro ao buscar assinaturas:', error)
-        addToast({
-          title: 'Erro',
-          message: 'Erro ao conectar com o servidor',
-          type: 'error'
-        })
-      }
-    }
+  }
 
   // Buscar pagamentos do usuário
   const fetchPayments = async () => {
     if (!user?.id) return
 
     try {
+      console.log('Buscando pagamentos para usuário:', user.id)
       const response = await fetch(`/api/payments?userId=${user.id}`)
       const data = await response.json()
 
       if (response.ok) {
+        console.log('Pagamentos recebidos:', data.payments)
         setPayments(data.payments || [])
       } else {
         console.error('Erro ao buscar pagamentos:', data.error)
@@ -143,6 +145,19 @@ export default function SubscriptionsPage() {
     }
 
     loadData()
+  }, [user?.id])
+
+  // Atualizar dados a cada 30 segundos para pegar mudanças dos webhooks
+  useEffect(() => {
+    if (!user?.id) return
+
+    const interval = setInterval(() => {
+      console.log('Atualizando dados automaticamente...')
+      fetchSubscriptions()
+      fetchPayments()
+    }, 30000) // 30 segundos
+
+    return () => clearInterval(interval)
   }, [user?.id])
 
   // Criar nova assinatura
@@ -170,7 +185,7 @@ export default function SubscriptionsPage() {
           message: 'Assinatura criada com sucesso!',
           type: 'success'
         })
-        
+
         // Recarregar assinaturas
         await fetchSubscriptions()
         await fetchPayments()
@@ -214,10 +229,10 @@ export default function SubscriptionsPage() {
       if (response.ok) {
         addToast({
           title: 'Sucesso',
-          message: 'Assinatura cancelada com sucesso!',
+          message: 'Assinatura cancelada com sucesso! Ela não gerará mais cobranças.',
           type: 'success'
         })
-        
+
         // Recarregar assinaturas
         await fetchSubscriptions()
       } else {
@@ -247,46 +262,20 @@ export default function SubscriptionsPage() {
     setShowCancelModal(true)
   }
 
-  // Formatar data
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR')
-  }
-
-  // Formatar status
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      active: { label: 'Ativa', color: 'bg-green-100 text-green-800' },
-      inactive: { label: 'Inativa', color: 'bg-gray-100 text-gray-800' },
-      overdue: { label: 'Vencida', color: 'bg-red-100 text-red-800' },
-      cancelled: { label: 'Cancelada', color: 'bg-gray-100 text-gray-800' }
+  // Alternar expansão dos pagamentos
+  const togglePaymentsExpansion = (subscriptionId: string) => {
+    const newExpanded = new Set(expandedPayments)
+    if (newExpanded.has(subscriptionId)) {
+      newExpanded.delete(subscriptionId)
+    } else {
+      newExpanded.add(subscriptionId)
     }
-
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.inactive
-
-    return (
-      <Badge className={config.color}>
-        {config.label}
-      </Badge>
-    )
+    setExpandedPayments(newExpanded)
   }
 
-  // Formatar status do pagamento
-  const getPaymentStatusBadge = (status: string) => {
-    const statusConfig = {
-      PENDING: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
-      RECEIVED: { label: 'Recebido', color: 'bg-green-100 text-green-800' },
-      OVERDUE: { label: 'Vencido', color: 'bg-red-100 text-red-800' },
-      CANCELLED: { label: 'Cancelado', color: 'bg-gray-100 text-gray-800' }
-    }
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.PENDING
 
-    return (
-      <Badge className={config.color}>
-        {config.label}
-      </Badge>
-    )
-  }
+
 
   if (loading) {
     return (
@@ -313,61 +302,234 @@ export default function SubscriptionsPage() {
           </p>
         </div>
 
+        {/* Planos Disponíveis */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-whatsapp-text mb-4">
+            Planos Disponíveis
+          </h2>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {plans.map((plan) => (
+              <Card key={plan.id} className="border-whatsapp-background shadow-lg">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl text-whatsapp-text">
+                    {plan.name}
+                  </CardTitle>
+                  <CardDescription className="text-whatsapp-text-secondary">
+                    {plan.description}
+                  </CardDescription>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold text-whatsapp-primary">
+                      R$ {plan.price.toFixed(2)}
+                    </span>
+                    <span className="text-whatsapp-text-secondary ml-2">
+                      /mês
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  <ul className="space-y-2">
+                    {plan.features?.map((feature, index) => (
+                      <li key={index} className="flex items-center text-sm text-whatsapp-text">
+                        <span className="text-whatsapp-primary mr-2">✓</span>
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="pt-4">
+                    <Button
+                      onClick={() => createSubscription(plan.id)}
+                      className="w-full bg-whatsapp-primary hover:bg-whatsapp-primary-dark"
+                      disabled={creatingSubscription}
+                    >
+                      {creatingSubscription ? 'Criando...' : `Assinar ${plan.name}`}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Assinaturas Ativas */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-whatsapp-text mb-4">
             Suas Assinaturas ({subscriptions.length})
           </h2>
-          
+
           {subscriptions.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
               {subscriptions.map((subscription) => (
                 <Card key={subscription.id} className="border-whatsapp-background shadow-lg">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg text-whatsapp-text">
-                          {subscription.subscription_plans?.name || 'Plano'}
-                        </CardTitle>
-                        <CardDescription className="text-whatsapp-text-secondary">
-                          {subscription.description}
-                        </CardDescription>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-xl font-semibold text-whatsapp-text">
+                            {subscription.description || 'Plano'}
+                          </h3>
+                          <StatusBadge status={subscription.status} variant="subscription" />
+                        </div>
+                        <p className="text-whatsapp-text-secondary">
+                          {subscription.cycle === 'MONTHLY' ? 'Mensal' : 'Anual'}
+                        </p>
                       </div>
-                      {getStatusBadge(subscription.status)}
                     </div>
-                  </CardHeader>
-                  
-                  <CardContent className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-whatsapp-text-secondary">Valor:</span>
-                      <span className="text-sm font-medium text-whatsapp-text">
-                        R$ {subscription.value.toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-sm text-whatsapp-text-secondary">Ciclo:</span>
-                      <span className="text-sm font-medium text-whatsapp-text">
-                        {subscription.cycle === 'MONTHLY' ? 'Mensal' : 'Anual'}
-                      </span>
-                    </div>
-                    
-                    <div className="flex justify-between">
-                      <span className="text-sm text-whatsapp-text-secondary">Próximo vencimento:</span>
-                      <span className="text-sm font-medium text-whatsapp-text">
-                        {formatDate(subscription.next_billing_date)}
-                      </span>
-                    </div>
-                    
-                    {subscription.group_id && (
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div className="flex justify-between">
-                        <span className="text-sm text-whatsapp-text-secondary">Grupo:</span>
+                        <span className="text-sm text-whatsapp-text-secondary">Valor:</span>
                         <span className="text-sm font-medium text-whatsapp-text">
-                          {subscription.group_id}
+                          R$ {subscription.value.toFixed(2)}
                         </span>
                       </div>
-                    )}
-                    
+
+                      <div className="flex justify-between">
+                        <span className="text-sm text-whatsapp-text-secondary">Ciclo:</span>
+                        <span className="text-sm font-medium text-whatsapp-text">
+                          {subscription.cycle === 'MONTHLY' ? 'Mensal' : 'Anual'}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span className="text-sm text-whatsapp-text-secondary">Próximo vencimento:</span>
+                        <span className="text-sm font-medium text-whatsapp-text">
+                          {formatDate(subscription.next_billing_date)}
+                        </span>
+                      </div>
+
+                      {subscription.group_id && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-whatsapp-text-secondary">Grupo:</span>
+                          <span className="text-sm font-medium text-whatsapp-text">
+                            {subscription.group_id}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pagamentos da Assinatura */}
+                    <div className="pt-3 border-t">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="text-sm font-medium text-whatsapp-text">Histórico de Pagamentos</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-whatsapp-text-secondary">
+                            {payments.filter(p => p.subscription_id === subscription.id).length} pagamento(s)
+                          </span>
+                          {payments.filter(p => p.subscription_id === subscription.id).length > 0 && (
+                            <div className="flex space-x-1">
+                              {payments.filter(p => p.subscription_id === subscription.id).some(p => p.status === 'CONFIRMED') && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full" title="Pagamentos confirmados"></div>
+                              )}
+                              {payments.filter(p => p.subscription_id === subscription.id).some(p => p.status === 'RECEIVED') && (
+                                <div className="w-2 h-2 bg-green-500 rounded-full" title="Pagamentos recebidos"></div>
+                              )}
+                              {payments.filter(p => p.subscription_id === subscription.id).some(p => p.status === 'PENDING') && (
+                                <div className="w-2 h-2 bg-yellow-500 rounded-full" title="Pagamentos pendentes"></div>
+                              )}
+                              {payments.filter(p => p.subscription_id === subscription.id).some(p => p.status === 'OVERDUE') && (
+                                <div className="w-2 h-2 bg-red-500 rounded-full" title="Pagamentos vencidos"></div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {payments.filter(p => p.subscription_id === subscription.id).length > 0 ? (
+                        <div className="space-y-2">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="px-2 py-1 text-left text-gray-600">Vencimento</th>
+                                  <th className="px-2 py-1 text-left text-gray-600">Valor</th>
+                                  <th className="px-2 py-1 text-left text-gray-600">Status</th>
+                                  <th className="px-2 py-1 text-left text-gray-600">Pagamento</th>
+                                  <th className="px-2 py-1 text-left text-gray-600">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {payments
+                                  .filter(p => p.subscription_id === subscription.id)
+                                  .sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime())
+                                  .slice(0, expandedPayments.has(subscription.id) ? undefined : 3)
+                                  .map((payment) => (
+                                    <tr key={payment.id} className="hover:bg-gray-50">
+                                      <td className="px-2 py-2 text-whatsapp-text-secondary">
+                                        {formatDate(payment.due_date)}
+                                      </td>
+                                      <td className="px-2 py-2 font-medium text-whatsapp-text">
+                                        R$ {payment.value.toFixed(2)}
+                                      </td>
+                                      <td className="px-2 py-2">
+                                        <StatusBadge status={payment.status} variant="payment" />
+                                      </td>
+                                      <td className="px-2 py-2 text-whatsapp-text-secondary">
+                                        {payment.payment_date ? formatDate(payment.payment_date) : '-'}
+                                      </td>
+                                      <td className="px-2 py-2">
+                                        <div className="flex space-x-1">
+                                          {/* Botão PAGAR para pagamentos pendentes */}
+                                          {payment.invoice_url && payment.status === 'PENDING' && (
+                                            <button
+                                              onClick={() => window.open(payment.invoice_url, '_blank')}
+                                              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
+                                              title="Pagar"
+                                            >
+                                              PAGAR
+                                            </button>
+                                          )}
+
+                                          {/* Botão Ver Comprovante para pagamentos confirmados */}
+                                          {payment.transaction_receipt_url && payment.status === 'CONFIRMED' && (
+                                            <button
+                                              onClick={() => window.open(payment.transaction_receipt_url, '_blank')}
+                                              className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                                              title="Ver Comprovante"
+                                            >
+                                              Ver Comprovante
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {payments.filter(p => p.subscription_id === subscription.id).length > 3 && !expandedPayments.has(subscription.id) && (
+                            <div className="text-center pt-2">
+                              <button
+                                onClick={() => togglePaymentsExpansion(subscription.id)}
+                                className="text-xs text-whatsapp-primary hover:underline"
+                              >
+                                Ver todos os {payments.filter(p => p.subscription_id === subscription.id).length} pagamentos
+                              </button>
+                            </div>
+                          )}
+                          {expandedPayments.has(subscription.id) && (
+                            <div className="text-center pt-2">
+                              <button
+                                onClick={() => togglePaymentsExpansion(subscription.id)}
+                                className="text-xs text-whatsapp-primary hover:underline"
+                              >
+                                Mostrar menos
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <span className="text-xs text-whatsapp-text-secondary">
+                            Nenhum pagamento registrado
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="pt-3 border-t">
                       {subscription.status === 'active' && (
                         <Button
@@ -399,170 +561,26 @@ export default function SubscriptionsPage() {
           )}
         </div>
 
-        {/* Planos Disponíveis */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-whatsapp-text mb-4">
-            Planos Disponíveis
-          </h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="border-whatsapp-background shadow-lg">
-                <CardHeader className="text-center">
-                  <CardTitle className="text-2xl text-whatsapp-text">
-                    {plan.name}
-                  </CardTitle>
-                  <CardDescription className="text-whatsapp-text-secondary">
-                    {plan.description}
-                  </CardDescription>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-whatsapp-primary">
-                      R$ {plan.price.toFixed(2)}
-                    </span>
-                    <span className="text-whatsapp-text-secondary ml-2">
-                      /{plan.billing_type === 'MONTHLY' ? 'mês' : 'ano'}
-                    </span>
-                  </div>
-                </CardHeader>
 
-                <CardContent className="space-y-4">
-                  <ul className="space-y-2">
-                    {plan.features?.map((feature, index) => (
-                      <li key={index} className="flex items-center text-sm text-whatsapp-text">
-                        <span className="text-whatsapp-primary mr-2">✓</span>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="pt-4">
-                    <Button
-                      onClick={() => createSubscription(plan.id)}
-                      className="w-full bg-whatsapp-primary hover:bg-whatsapp-primary-dark"
-                      disabled={creatingSubscription}
-                    >
-                      {creatingSubscription ? 'Criando...' : `Assinar ${plan.name}`}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-
-        {/* Histórico de Pagamentos */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-whatsapp-text mb-4">
-            Histórico de Pagamentos ({payments.length})
-          </h2>
-          
-          {payments.length > 0 ? (
-            <Card className="border-whatsapp-background shadow-lg">
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Descrição
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Valor
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Vencimento
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pagamento
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Ações
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {payments.map((payment) => (
-                        <tr key={payment.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-whatsapp-text">
-                            {payment.description || 'Pagamento'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-whatsapp-text">
-                            R$ {payment.value.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getPaymentStatusBadge(payment.status)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-whatsapp-text">
-                            {formatDate(payment.due_date)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-whatsapp-text">
-                            {payment.payment_date ? formatDate(payment.payment_date) : '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                              {payment.invoice_url && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(payment.invoice_url, '_blank')}
-                                >
-                                  Fatura
-                                </Button>
-                              )}
-                              {payment.bank_slip_url && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(payment.bank_slip_url, '_blank')}
-                                >
-                                  Boleto
-                                </Button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-whatsapp-background shadow-lg">
-              <CardContent className="text-center py-8">
-                <div className="text-6xl mb-4">💰</div>
-                <h3 className="text-xl font-semibold text-whatsapp-text mb-2">
-                  Nenhum pagamento encontrado
-                </h3>
-                <p className="text-whatsapp-text-secondary">
-                  Você ainda não possui histórico de pagamentos.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
       </div>
 
       {/* Modal de Confirmação de Cancelamento */}
-             <ConfirmModal
-         isOpen={showCancelModal}
-         onClose={() => {
-           setShowCancelModal(false)
-           setSelectedSubscription(null)
-         }}
-         onConfirm={() => {
-           if (selectedSubscription) {
-             cancelSubscription(selectedSubscription.id)
-           }
-         }}
-         title="Cancelar Assinatura"
-         message={`Tem certeza que deseja cancelar a assinatura "${selectedSubscription?.subscription_plans?.name}"? Esta ação não pode ser desfeita.`}
-         confirmText="Cancelar Assinatura"
-         cancelText="Manter Assinatura"
-       />
+      <ConfirmModal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false)
+          setSelectedSubscription(null)
+        }}
+        onConfirm={() => {
+          if (selectedSubscription) {
+            cancelSubscription(selectedSubscription.id)
+          }
+        }}
+        title="Cancelar Assinatura"
+        message={`Tem certeza que deseja cancelar a assinatura "${selectedSubscription?.description || 'Plano'}"? Ela não gerará mais cobranças.`}
+        confirmText="Cancelar Assinatura"
+        cancelText="Manter Assinatura"
+      />
     </div>
   )
 }

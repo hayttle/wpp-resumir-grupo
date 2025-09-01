@@ -4,17 +4,14 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Badge, StatusBadge } from '@/components/ui'
 import {
   CreditCard,
   Calendar,
-  Users,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertTriangle
+  Users
 } from 'lucide-react'
 import type { Subscription } from '@/types/database'
+import { formatDate, formatCurrency } from '@/lib/utils/formatters'
 
 interface SubscriptionCardProps {
   subscription: Subscription & {
@@ -23,6 +20,12 @@ interface SubscriptionCardProps {
       description: string
       price: number
     }
+    payments?: {
+      id: string
+      invoice_url?: string
+      bank_slip_url?: string
+      status: string
+    }[]
   }
   onCancel?: (subscriptionId: string) => Promise<void>
   onSync?: (subscriptionId: string) => Promise<void>
@@ -35,44 +38,7 @@ export default function SubscriptionCard({
 }: SubscriptionCardProps) {
   const [isLoading, setIsLoading] = useState(false)
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active':
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">
-            <CheckCircle className="h-3 w-3 mr-1" />
-            Ativo
-          </Badge>
-        )
-      case 'inactive':
-        return (
-          <Badge variant="secondary" className="bg-gray-100 text-gray-800">
-            <Clock className="h-3 w-3 mr-1" />
-            Inativo
-          </Badge>
-        )
-      case 'overdue':
-        return (
-          <Badge variant="destructive" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            <AlertTriangle className="h-3 w-3 mr-1" />
-            Em Atraso
-          </Badge>
-        )
-      case 'cancelled':
-        return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
-            <XCircle className="h-3 w-3 mr-1" />
-            Cancelado
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="secondary">
-            {status}
-          </Badge>
-        )
-    }
-  }
+
 
   const handleCancel = async () => {
     if (!onCancel) return
@@ -108,16 +74,7 @@ export default function SubscriptionCard({
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR')
-  }
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price)
-  }
 
   return (
     <Card className="w-full">
@@ -131,7 +88,7 @@ export default function SubscriptionCard({
               Grupo: {subscription.group_id || 'N/A'}
             </CardDescription>
           </div>
-          {getStatusBadge(subscription.status)}
+          <StatusBadge status={subscription.status} variant="subscription" />
         </div>
       </CardHeader>
 
@@ -141,7 +98,7 @@ export default function SubscriptionCard({
           <CreditCard className="h-4 w-4" />
           <span>
             {subscription.plans?.price
-              ? formatPrice(subscription.plans.price)
+              ? formatCurrency(subscription.plans.price)
               : 'R$ 29,90'
             } / mês
           </span>
@@ -168,6 +125,23 @@ export default function SubscriptionCard({
 
         {/* Ações */}
         <div className="flex gap-2 pt-4">
+          {(subscription.status === 'inactive' || subscription.status === 'overdue') && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                const latestPayment = subscription.payments?.[0]
+                if (latestPayment?.invoice_url) {
+                  window.open(latestPayment.invoice_url, '_blank')
+                }
+              }}
+              disabled={!subscription.payments?.[0]?.invoice_url}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              PAGAR
+            </Button>
+          )}
+
           {subscription.status === 'active' && (
             <Button
               variant="outline"

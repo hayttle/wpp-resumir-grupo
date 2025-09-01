@@ -9,6 +9,7 @@ import type {
 } from '@/types/subscription'
 import type { Subscription, Payment } from '@/types/database'
 import { Logger } from '@/lib/utils/logger'
+import { formatDateForDB, convertAsaasDateToUTC } from '@/lib/utils/formatters'
 
 export class AsaasSubscriptionService {
   
@@ -70,6 +71,41 @@ export class AsaasSubscriptionService {
 
   // === SUBSCRIPTION MANAGEMENT ===
 
+  // Cancelar assinatura (suspender no Asaas)
+  static async cancelSubscription(subscriptionId: string): Promise<void> {
+    try {
+      Logger.info('AsaasSubscriptionService', 'Cancelando assinatura', { subscriptionId })
+
+      // Buscar assinatura para obter o asaas_subscription_id
+      const { data: subscription, error: subError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('asaas_subscription_id')
+        .eq('id', subscriptionId)
+        .single()
+
+      if (subError) throw subError
+      if (!subscription) throw new Error('Assinatura não encontrada')
+      if (!subscription.asaas_subscription_id) throw new Error('Assinatura não possui ID do Asaas')
+
+      // Atualizar status para INACTIVE no Asaas
+      await AsaasService.updateSubscription(subscription.asaas_subscription_id, { status: 'INACTIVE' })
+
+      // Atualizar status local para cancelled
+      const { error: updateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({ status: 'cancelled' })
+        .eq('id', subscriptionId)
+
+      if (updateError) throw updateError
+
+      Logger.info('AsaasSubscriptionService', 'Assinatura cancelada com sucesso', { subscriptionId })
+
+    } catch (error) {
+      Logger.error('AsaasSubscriptionService', 'Erro ao cancelar assinatura', { error, subscriptionId })
+      throw error
+    }
+  }
+
   // Criar assinatura usando endpoint do Asaas
   static async createSubscription(
     userId: string,
@@ -81,7 +117,7 @@ export class AsaasSubscriptionService {
 
       // Buscar plano
       const { data: plan, error: planError } = await supabaseAdmin
-        .from('subscription_plans')
+        .from('plans')
         .select('*')
         .eq('id', planId)
         .single()
@@ -94,12 +130,12 @@ export class AsaasSubscriptionService {
 
       // Preparar dados para criação da assinatura no Asaas
       const subscriptionData: CreateSubscriptionRequest = {
-        billingType: 'PIX' as const,
-        cycle: plan.billingType,
+        billingType: 'UNDEFINED' as const,
+        cycle: 'MONTHLY', // Por padrão, todos os planos são mensais
         customer: customer.id,
         value: plan.price,
-        nextDueDate: new Date().toISOString().split('T')[0], // Data atual no formato YYYY-MM-DD
-        description: `WPP - Resumir Grupo ${plan.billingType === 'MONTHLY' ? 'Mensal' : 'Anual'}`
+        nextDueDate: formatDateForDB(new Date()), // Data atual no formato YYYY-MM-DD
+        description: `WPP - Resumir Grupo - ${plan.name}`
       }
 
       Logger.info('AsaasSubscriptionService', 'Criando assinatura no Asaas', { subscriptionData })
@@ -112,19 +148,15 @@ export class AsaasSubscriptionService {
         user_id: userId,
         plan_id: planId,
         customer: customer.id,
-        billing_type: 'PIX' as const,
+        billing_type: 'UNDEFINED' as const,
         value: plan.price,
-        cycle: plan.billingType,
+        cycle: 'MONTHLY', // Por padrão, todos os planos são mensais
         description: subscriptionData.description,
         status: 'active',
-        start_date: new Date().toISOString(),
+        start_date: formatDateForDB(new Date()),
         next_billing_date: asaasSubscription.nextDueDate,
         asaas_subscription_id: asaasSubscription.id,
-        group_id: groupId,
-        fine_value: 0,
-        fine_type: 'FIXED',
-        interest_value: 0,
-        interest_type: 'PERCENTAGE'
+        group_id: groupId
       }
 
       const { data: subscription, error: insertError } = await supabaseAdmin
@@ -158,6 +190,9 @@ export class AsaasSubscriptionService {
       switch (event) {
         case 'PAYMENT_CREATED':
           await this.handlePaymentCreated(data)
+          break
+        case 'PAYMENT_CONFIRMED':
+          await this.handlePaymentConfirmed(data)
           break
         case 'PAYMENT_RECEIVED':
           await this.handlePaymentReceived(data)
@@ -217,8 +252,8 @@ export class AsaasSubscriptionService {
         value: payment.value,
         status: payment.status,
         billing_type: payment.billingType,
-        due_date: payment.dueDate,
-        payment_date: payment.paymentDate,
+        due_date: convertAsaasDateToUTC(payment.dueDate),
+        payment_date: payment.paymentDate ? convertAsaasDateToUTC(payment.paymentDate) : null,
         description: payment.description,
         external_reference: null, // externalReference não está disponível no webhook
         invoice_url: payment.invoiceUrl,
@@ -243,6 +278,97 @@ export class AsaasSubscriptionService {
     }
   }
 
+  // Handler para PAYMENT_CONFIRMED
+  static async handlePaymentConfirmed(data: WebhookEvent): Promise<void> {
+    try {
+      Logger.info('AsaasSubscriptionService', 'Processando PAYMENT_CONFIRMED', { paymentId: data.payment?.id })
+
+      if (!data.payment) {
+        throw new Error('Dados do pagamento não encontrados no webhook')
+      }
+
+      const payment = data.payment
+
+      // Primeiro, verificar se o pagamento já existe no banco
+      const { data: existingPayment, error: checkError } = await supabaseAdmin
+        .from('payments')
+        .select('id')
+        .eq('asaas_payment_id', payment.id)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        throw checkError
+      }
+
+      if (!existingPayment) {
+        // Se o pagamento não existe, criar primeiro (caso o PAYMENT_CREATED não tenha sido processado)
+        Logger.info('AsaasSubscriptionService', 'Pagamento não encontrado, criando primeiro', { paymentId: payment.id })
+        
+        // Buscar assinatura pelo subscription_id do Asaas
+        const { data: subscription, error: subError } = await supabaseAdmin
+          .from('subscriptions')
+          .select('id, user_id')
+          .eq('asaas_subscription_id', payment.subscription)
+          .single()
+
+        if (subError) throw subError
+        if (!subscription) {
+          throw new Error(`Assinatura não encontrada para subscription_id: ${payment.subscription}`)
+        }
+
+        // Criar registro do pagamento no banco
+        const paymentInsert = {
+          subscription_id: subscription.id,
+          asaas_payment_id: payment.id,
+          user_id: subscription.user_id,
+          value: payment.value,
+          status: 'CONFIRMED', // Já marcar como confirmado
+          billing_type: payment.billingType,
+          due_date: convertAsaasDateToUTC(payment.dueDate),
+          payment_date: payment.paymentDate || payment.clientPaymentDate ? 
+            convertAsaasDateToUTC(payment.paymentDate || payment.clientPaymentDate || '') : 
+            formatDateForDB(new Date()),
+          description: payment.description,
+          external_reference: null,
+          invoice_url: payment.invoiceUrl,
+          bank_slip_url: payment.bankSlipUrl,
+          transaction_receipt_url: payment.transactionReceiptUrl
+        }
+
+        const { error: insertError } = await supabaseAdmin
+          .from('payments')
+          .insert(paymentInsert)
+
+        if (insertError) throw insertError
+
+        Logger.info('AsaasSubscriptionService', 'Pagamento criado e confirmado com sucesso', { 
+          paymentId: payment.id, 
+          subscriptionId: subscription.id 
+        })
+      } else {
+        // Se o pagamento já existe, apenas atualizar o status
+        const { error: updateError } = await supabaseAdmin
+          .from('payments')
+          .update({ 
+            status: 'CONFIRMED',
+            payment_date: payment.paymentDate || payment.clientPaymentDate ? 
+              convertAsaasDateToUTC(payment.paymentDate || payment.clientPaymentDate || '') : 
+              formatDateForDB(new Date()),
+            transaction_receipt_url: payment.transactionReceiptUrl
+          })
+          .eq('asaas_payment_id', payment.id)
+
+        if (updateError) throw updateError
+
+        Logger.info('AsaasSubscriptionService', 'Pagamento marcado como confirmado', { paymentId: payment.id })
+      }
+
+    } catch (error) {
+      Logger.error('AsaasSubscriptionService', 'Erro ao processar PAYMENT_CONFIRMED', { error, data })
+      throw error
+    }
+  }
+
   // Handler para PAYMENT_RECEIVED
   static async handlePaymentReceived(data: WebhookEvent): Promise<void> {
     try {
@@ -259,7 +385,7 @@ export class AsaasSubscriptionService {
         .from('payments')
         .update({ 
           status: 'RECEIVED',
-          payment_date: payment.paymentDate || new Date().toISOString().split('T')[0]
+          payment_date: payment.paymentDate ? convertAsaasDateToUTC(payment.paymentDate) : formatDateForDB(new Date())
         })
         .eq('asaas_payment_id', payment.id)
 
@@ -324,11 +450,12 @@ export class AsaasSubscriptionService {
         .from('subscriptions')
         .update({
           status: subscription.status.toLowerCase(),
-          next_billing_date: subscription.nextDueDate,
+          next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
           value: subscription.value,
           billing_type: subscription.billingType,
           cycle: subscription.cycle,
-          description: subscription.description
+          description: subscription.description,
+          payment_link: subscription.paymentLink
         })
         .eq('asaas_subscription_id', subscription.id)
 
@@ -358,11 +485,12 @@ export class AsaasSubscriptionService {
         .from('subscriptions')
         .update({
           status: subscription.status.toLowerCase(),
-          next_billing_date: subscription.nextDueDate,
+          next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
           value: subscription.value,
           billing_type: subscription.billingType,
           cycle: subscription.cycle,
-          description: subscription.description
+          description: subscription.description,
+          payment_link: subscription.paymentLink
         })
         .eq('asaas_subscription_id', subscription.id)
 
@@ -475,7 +603,7 @@ export class AsaasSubscriptionService {
               .from('subscriptions')
               .update({
                 status: asaasSubscription.status.toLowerCase(),
-                next_billing_date: asaasSubscription.nextDueDate,
+                next_billing_date: convertAsaasDateToUTC(asaasSubscription.nextDueDate),
                 value: asaasSubscription.value
               })
               .eq('asaas_subscription_id', subscription.asaas_subscription_id)

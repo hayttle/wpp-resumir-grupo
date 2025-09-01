@@ -135,15 +135,19 @@ export class AsaasService {
     return response.data
   }
 
-  // Atualizar assinatura
-  static async updateSubscription(
-    subscriptionId: string, 
-    subscriptionData: Partial<CreateSubscriptionRequest>
-  ): Promise<AsaasSubscription> {
-    return this.request<AsaasSubscription>(`/v3/subscriptions/${subscriptionId}`, {
-      method: 'POST',
-      body: JSON.stringify(subscriptionData),
-    })
+  // Atualizar assinatura existente
+  static async updateSubscription(subscriptionId: string, updateData: { status?: string }): Promise<any> {
+    try {
+      console.log('[ASAAS REQUEST] Atualizando assinatura:', { subscriptionId, updateData })
+      
+      return this.request<any>(`/v3/subscriptions/${subscriptionId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateData)
+      })
+    } catch (error) {
+      console.error('[ASAAS ERROR] Erro ao atualizar assinatura:', error)
+      throw error
+    }
   }
 
   // Cancelar assinatura

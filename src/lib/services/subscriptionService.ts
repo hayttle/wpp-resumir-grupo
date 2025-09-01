@@ -8,6 +8,7 @@ import type {
   AsaasSubscription
 } from '@/types/subscription'
 import type { Subscription } from '@/types/database'
+import { formatDateForDB } from '@/lib/utils/formatters'
 
 export class SubscriptionService {
   
@@ -127,7 +128,7 @@ export class SubscriptionService {
         customer: asaasCustomer.id,
         billingType,
         value: plan.price,
-        nextDueDate: nextDueDate.toISOString().split('T')[0],
+        nextDueDate: formatDateForDB(nextDueDate),
         description: `Assinatura ${plan.name}`,
         cycle: plan.billingType,
         externalReference: `${userId}-${planId}`,
@@ -142,7 +143,7 @@ export class SubscriptionService {
         user_id: userId,
         plan_id: planId,
         status: asaasSubscription.status.toLowerCase() as 'active' | 'inactive' | 'overdue' | 'cancelled',
-        start_date: new Date().toISOString(),
+        start_date: formatDateForDB(new Date()),
         next_billing_date: asaasSubscription.nextDueDate,
         asaas_subscription_id: asaasSubscription.id,
         group_id: undefined // será definido quando o usuário vincular a um grupo

@@ -10,6 +10,7 @@ import { UserService } from '@/lib/services/userService'
 import { useAuth } from '@/contexts/AuthContext'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { useToast } from '@/components/ui/toast'
+import { formatDate } from '@/lib/utils/formatters'
 
 
 interface User {
@@ -326,9 +327,7 @@ export default function AdminUsersManager() {
                     <td className="py-4 px-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
-                        <span className="text-sm text-gray-900">
-                          {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                        </span>
+                        <span>Criado em {formatDate(user.created_at)}</span>
                       </div>
                     </td>
                     <td className="py-4 px-4">

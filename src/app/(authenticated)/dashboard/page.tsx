@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Smartphone, Users, FileText, Wifi, WifiOff, Clock, TrendingUp } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { DashboardService, DashboardStats } from '@/lib/services/dashboardService'
+import { formatDate } from '@/lib/utils/formatters'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -103,15 +104,7 @@ export default function DashboardPage() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+
 
   // Se não há dados, mostrar dashboard vazio
   const displayStats = stats || {

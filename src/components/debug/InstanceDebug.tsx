@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { InstanceService } from '@/lib/services/instanceService'
 import { useAuth } from '@/contexts/AuthContext'
+import { formatDateTime } from '@/lib/utils/formatters'
 
 export function InstanceDebug() {
   const { user } = useAuth()
@@ -212,7 +213,7 @@ export function InstanceDebug() {
                 </span>
               </p>
               <p><strong>Evolution ID:</strong> {instance.evolution_instance_id}</p>
-              <p><strong>Criada em:</strong> {new Date(instance.created_at).toLocaleString()}</p>
+              <p><strong>Criada em:</strong> {formatDateTime(instance.created_at)}</p>
 
               {/* QR Code */}
               {instance.qr_code && (

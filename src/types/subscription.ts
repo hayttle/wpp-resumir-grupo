@@ -155,7 +155,7 @@ export interface CreateCustomerRequest {
 
 export interface CreateSubscriptionRequest {
   customer: string
-  billingType: 'CREDIT_CARD' | 'BOLETO' | 'PIX'
+  billingType: 'CREDIT_CARD' | 'BOLETO' | 'PIX' | 'UNDEFINED'
   value: number
   nextDueDate: string
   description: string
