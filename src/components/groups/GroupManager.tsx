@@ -49,6 +49,7 @@ export default function GroupManager() {
   const [canSelectNewGroups, setCanSelectNewGroups] = useState(true)
   const [selectionReason, setSelectionReason] = useState<string>()
   const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
+  const [maxGroupsFromBackend, setMaxGroupsFromBackend] = useState(1)
 
   // Função para recalcular a capacidade de seleção de grupos baseada no estado local
   const recalculateSelectionCapability = useCallback(() => {
@@ -56,7 +57,7 @@ export default function GroupManager() {
 
     // Calcular capacidade baseada no número de grupos selecionados
     const selectedGroupsCount = selectedGroups.length
-    const maxGroups = 1 // Limite do plano atual (pode ser dinâmico no futuro)
+    const maxGroups = maxGroupsFromBackend
 
     if (selectedGroupsCount >= maxGroups) {
       setCanSelectNewGroups(false)
@@ -65,7 +66,7 @@ export default function GroupManager() {
       setCanSelectNewGroups(true)
       setSelectionReason(undefined)
     }
-  }, [user, selectedGroups.length])
+  }, [user, selectedGroups.length, maxGroupsFromBackend])
 
   // Atualizar status da instância apenas uma vez no carregamento da página
   useEffect(() => {
@@ -107,6 +108,11 @@ export default function GroupManager() {
         if (!result.canSelectNewGroups) {
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
+        } else {
+          // Atualizar maxGroups do backend
+          if (result.maxGroups) {
+            setMaxGroupsFromBackend(result.maxGroups)
+          }
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
@@ -130,6 +136,11 @@ export default function GroupManager() {
       // Atualizar estado de capacidade de seleção
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
+      
+      // Atualizar maxGroups do backend
+      if (result.maxGroups) {
+        setMaxGroupsFromBackend(result.maxGroups)
+      }
 
       // Se não pode selecionar grupos, mostrar apenas grupos já selecionados
       if (!result.canSelectNewGroups) {

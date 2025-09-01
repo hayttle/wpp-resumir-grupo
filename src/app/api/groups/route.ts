@@ -203,7 +203,8 @@ async function fetchAllGroups(instanceName: string, supabase: any, userId: strin
       success: true,
       groups: groupsWithSelectionStatus,
       canSelectNewGroups: canSelectNewGroups.canSelect,
-      reason: canSelectNewGroups.reason
+      reason: canSelectNewGroups.reason,
+      maxGroups: canSelectNewGroups.maxGroups
     })
 
   } catch (error) {
@@ -359,7 +360,8 @@ async function checkUserPermissions(userId: string) {
     return NextResponse.json({
       success: true,
       canSelectNewGroups: result.canSelect,
-      reason: result.reason
+      reason: result.reason,
+      maxGroups: result.maxGroups
     })
   } catch (error) {
     console.error('❌ Erro ao verificar permissões:', error)

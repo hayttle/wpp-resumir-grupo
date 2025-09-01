@@ -657,7 +657,7 @@ export class AsaasSubscriptionService {
   }
 
   // Verificar se usuário pode selecionar novos grupos
-  static async canSelectNewGroups(userId: string): Promise<{ canSelect: boolean, reason?: string }> {
+  static async canSelectNewGroups(userId: string): Promise<{ canSelect: boolean, reason?: string, maxGroups?: number }> {
     try {
       Logger.info('AsaasSubscriptionService', 'Verificando se usuário pode selecionar novos grupos', { userId })
 
@@ -731,7 +731,7 @@ export class AsaasSubscriptionService {
         currentCount: currentGroupCount, 
         maxAllowed: maxGroups 
       })
-      return { canSelect: true }
+      return { canSelect: true, maxGroups }
 
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao verificar capacidade de seleção', { error, userId })

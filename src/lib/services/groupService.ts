@@ -10,6 +10,7 @@ interface FetchGroupsResult {
   groups: GroupWithSelectionStatus[]
   canSelectNewGroups: boolean
   reason?: string
+  maxGroups?: number
 }
 
 export class GroupService {
@@ -41,7 +42,8 @@ export class GroupService {
       return {
         groups: result.groups || [],
         canSelectNewGroups: result.canSelectNewGroups || false,
-        reason: result.reason
+        reason: result.reason,
+        maxGroups: result.maxGroups
       }
     } catch (error) {
       console.error('❌ GroupService: Erro ao buscar grupos:', error)
