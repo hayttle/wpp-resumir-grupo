@@ -10,7 +10,6 @@ interface FetchGroupsResult {
   groups: GroupWithSelectionStatus[]
   canSelectNewGroups: boolean
   reason?: string
-  maxGroups?: number
 }
 
 export class GroupService {

@@ -50,8 +50,7 @@ export default function GroupManager() {
   const [canSelectNewGroups, setCanSelectNewGroups] = useState(true)
   const [selectionReason, setSelectionReason] = useState<string>()
   const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
-  const [maxGroupsFromBackend, setMaxGroupsFromBackend] = useState(1)
-  
+
   // Estados para o modal de confirmação
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
   const [selectedGroupForSubscription, setSelectedGroupForSubscription] = useState<WhatsAppGroup | null>(null)
@@ -62,18 +61,11 @@ export default function GroupManager() {
   const recalculateSelectionCapability = useCallback(() => {
     if (!user) return
 
-    // Calcular capacidade baseada no número de grupos selecionados
-    const selectedGroupsCount = selectedGroups.length
-    const maxGroups = maxGroupsFromBackend
-
-    if (selectedGroupsCount >= maxGroups) {
-      setCanSelectNewGroups(false)
-      setSelectionReason(`Limite de ${maxGroups} grupo(s) atingido`)
-    } else {
-      setCanSelectNewGroups(true)
-      setSelectionReason(undefined)
-    }
-  }, [user, selectedGroups.length, maxGroupsFromBackend])
+    // Com o sistema de assinatura por grupo, não há mais limite global
+    // A capacidade é sempre true, a menos que haja problemas de pagamento
+    setCanSelectNewGroups(true)
+    setSelectionReason(undefined)
+  }, [user])
 
   // Atualizar status da instância apenas uma vez no carregamento da página
   useEffect(() => {
@@ -84,7 +76,7 @@ export default function GroupManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance, user, hasUpdatedInstanceStatus])
 
-  // Recalcular capacidade de seleção sempre que o número de grupos selecionados mudar
+  // Recalcular capacidade de seleção sempre que o usuário mudar
   useEffect(() => {
     recalculateSelectionCapability()
   }, [recalculateSelectionCapability])
@@ -115,11 +107,6 @@ export default function GroupManager() {
         if (!result.canSelectNewGroups) {
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
-        } else {
-          // Atualizar maxGroups do backend
-          if (result.maxGroups) {
-            setMaxGroupsFromBackend(result.maxGroups)
-          }
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
@@ -143,11 +130,6 @@ export default function GroupManager() {
       // Atualizar estado de capacidade de seleção
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
-
-      // Atualizar maxGroups do backend
-      if (result.maxGroups) {
-        setMaxGroupsFromBackend(result.maxGroups)
-      }
 
       // Se não pode selecionar grupos, mostrar apenas grupos já selecionados
       if (!result.canSelectNewGroups) {
@@ -189,7 +171,7 @@ export default function GroupManager() {
     try {
       const response = await fetch('/api/plans')
       const data = await response.json()
-      
+
       if (response.ok && data.plans && data.plans.length > 0) {
         setPlan(data.plans[0]) // Usar o primeiro plano disponível
       }
@@ -531,30 +513,7 @@ export default function GroupManager() {
             </div>
           )}
 
-          {/* Banner para limite de grupos atingido */}
-          {!canSelectNewGroups && selectionReason?.includes('Limite de') && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
-              <div className="flex items-center gap-2 text-yellow-700">
-                <AlertCircle className="h-4 w-4" />
-                <div className="flex-1">
-                  <span className="text-sm font-medium">
-                    ⚠️ {selectionReason}
-                  </span>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    Para selecionar mais grupos, adquira mais assinatura na página "Assinaturas"
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.location.href = '/subscriptions'}
-                  className="ml-2 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
-                >
-                  Ver Assinaturas
-                </Button>
-              </div>
-            </div>
-          )}
+
 
           {/* Banner para nenhuma assinatura */}
           {!canSelectNewGroups && (selectionReason === 'Nenhuma assinatura encontrada' || selectionReason === 'Nenhuma assinatura ativa encontrada') && (
@@ -634,7 +593,7 @@ export default function GroupManager() {
                   </div>
                   <div className="ml-4">
                     {!group.isSelected ? (
-                      group.canSelect && canSelectNewGroups ? (
+                      canSelectNewGroups ? (
                         <Button
                           onClick={() => selectGroup(group)}
                           variant="outline"
@@ -647,10 +606,10 @@ export default function GroupManager() {
                       ) : (
                         <div className="text-center">
                           <Badge variant="secondary" className="bg-gray-100 text-gray-500">
-                            Limite Atingido
+                            Indisponível
                           </Badge>
                           <p className="text-xs text-gray-400 mt-1">
-                            Upgrade necessário
+                            Verifique assinaturas
                           </p>
                         </div>
                       )

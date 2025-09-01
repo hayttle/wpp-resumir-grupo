@@ -63,7 +63,7 @@ export function SubscriptionConfirmationModal({
             <X className="h-4 w-4" />
           </Button>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Informações do Grupo */}
           <div className="space-y-2">
