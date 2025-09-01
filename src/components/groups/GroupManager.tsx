@@ -89,7 +89,7 @@ export default function GroupManager() {
       try {
         // Fazer uma checagem inicial para ver se pode acessar grupos
         const result = await GroupService.fetchAllGroups(instance.instance_name)
-        
+
         console.log('🔍 Checagem inicial completa:', result)
 
         if (!result.canSelectNewGroups) {
@@ -107,6 +107,11 @@ export default function GroupManager() {
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
+        
+        // Em caso de erro na API, assumir que não pode acessar grupos por segurança
+        console.log('🔒 Erro na API - assumindo que não pode acessar grupos por segurança')
+        setCanSelectNewGroups(false)
+        setSelectionReason('Erro ao verificar permissões de acesso')
       }
     }
 
