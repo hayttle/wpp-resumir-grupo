@@ -131,29 +131,12 @@ export default function GroupManager() {
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
 
-      // Se não pode selecionar grupos, mostrar apenas grupos já selecionados
-      if (!result.canSelectNewGroups) {
-        // Manter apenas grupos já selecionados na lista
-        const selectedGroupIds = selectedGroups.map(gs => gs.group_id)
-        const filteredGroups = result.groups.filter(group =>
-          selectedGroupIds.includes(group.id)
-        )
-
-        const groupsWithStatus: GroupWithSelectionStatus[] = filteredGroups.map(group => ({
-          ...group,
-          isSelected: true,
-          canSelect: false
-        }))
-
-        setGroups(groupsWithStatus)
-        return
-      }
-
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
+      // Sempre mostrar todos os grupos, independente do status da assinatura
       const groupsWithStatus: GroupWithSelectionStatus[] = result.groups.map(group => ({
         ...group,
         isSelected: selectedGroups.some(selection => selection.group_id === group.id),
-        canSelect: result.canSelectNewGroups
+        canSelect: result.canSelectNewGroups // Apenas para controlar se pode selecionar novos
       }))
       setGroups(groupsWithStatus)
 
@@ -468,7 +451,7 @@ export default function GroupManager() {
               <div className="flex gap-2">
                 <Button
                   onClick={fetchAllGroups}
-                  disabled={fetchingGroups || !canSelectNewGroups}
+                  disabled={fetchingGroups}
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
