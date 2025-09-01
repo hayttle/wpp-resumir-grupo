@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,17 +35,6 @@ export default function GroupManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  // Atualizar status da instância apenas uma vez no carregamento da página
-  useEffect(() => {
-    if (instance && user && !hasUpdatedInstanceStatus.current) {
-      hasUpdatedInstanceStatus.current = true
-      updateInstanceStatus()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instance, user]) // Dependências para garantir que execute quando instance/user estiverem disponíveis
-
-
-
   const loadUserGroupSelections = useCallback(async () => {
     try {
       const groupSelections = await GroupService.getUserGroupSelections()
@@ -59,7 +48,16 @@ export default function GroupManager() {
 
   const [canSelectNewGroups, setCanSelectNewGroups] = useState(true)
   const [selectionReason, setSelectionReason] = useState<string>()
-  const hasUpdatedInstanceStatus = useRef(false)
+  const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
+
+  // Atualizar status da instância apenas uma vez no carregamento da página
+  useEffect(() => {
+    if (instance && user && !hasUpdatedInstanceStatus) {
+      setHasUpdatedInstanceStatus(true)
+      updateInstanceStatus()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance, user, hasUpdatedInstanceStatus]) // Dependências para garantir que execute quando instance/user estiverem disponíveis
 
   const fetchAllGroups = async () => {
     if (!instance?.instance_name) {
