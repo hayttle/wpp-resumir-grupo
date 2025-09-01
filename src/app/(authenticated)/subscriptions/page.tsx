@@ -24,7 +24,7 @@ export default function SubscriptionsPage() {
       try {
         const response = await fetch('/api/plans')
         const data = await response.json()
-        
+
         if (response.ok) {
           setPlans(data.plans || [])
         } else {
@@ -59,7 +59,7 @@ export default function SubscriptionsPage() {
             Planos de Assinatura
           </h1>
           <p className="text-whatsapp-text-secondary max-w-2xl mx-auto">
-            Escolha o plano ideal para gerenciar seus grupos do WhatsApp. 
+            Escolha o plano ideal para gerenciar seus grupos do WhatsApp.
             Cada assinatura permite gerenciar 1 grupo.
           </p>
         </div>
@@ -83,7 +83,7 @@ export default function SubscriptionsPage() {
                   </span>
                 </div>
               </CardHeader>
-              
+
               <CardContent className="space-y-4">
                 <ul className="space-y-2">
                   {plan.features?.map((feature, index) => (
@@ -93,7 +93,7 @@ export default function SubscriptionsPage() {
                     </li>
                   ))}
                 </ul>
-                
+
                 <div className="pt-4">
                   <Button
                     onClick={() => {
