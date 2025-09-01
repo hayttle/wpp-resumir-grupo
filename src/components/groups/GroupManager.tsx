@@ -103,19 +103,13 @@ export default function GroupManager() {
         }
 
         const result = await response.json()
-        console.log('🔍 Checagem inicial de permissões:', result)
 
         if (!result.canSelectNewGroups) {
-          console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
-        } else {
-          console.log('✅ Checagem inicial: Usuário pode acessar grupos')
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
-        // Em caso de erro, manter o estado padrão (pode acessar)
-        console.log('🔒 Erro na checagem - mantendo estado padrão')
       }
     }
 
@@ -139,7 +133,6 @@ export default function GroupManager() {
 
       // Se não pode selecionar grupos, mostrar apenas grupos já selecionados
       if (!result.canSelectNewGroups) {
-        console.log('⚠️ Usuário não pode selecionar novos grupos:', result.reason)
         // Manter apenas grupos já selecionados na lista
         const selectedGroupIds = selectedGroups.map(gs => gs.group_id)
         const filteredGroups = result.groups.filter(group =>
@@ -442,7 +435,7 @@ export default function GroupManager() {
             <div className="flex items-center gap-2 text-green-700">
               <Check className="h-4 w-4" />
               <span className="text-sm font-medium">
-                ✅ Sua instância está conectada e capturando mensagens dos grupos selecionados
+                ✅ Sua instância Whatsapp está conectada e pronta para uso.
               </span>
             </div>
           </div>
