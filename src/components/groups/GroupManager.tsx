@@ -94,6 +94,11 @@ export default function GroupManager() {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
+          
+          // Alert específico para pagamento vencido
+          if (result.reason === 'Existe pagamento vencido') {
+            alert('⚠️ Você possui pagamentos vencidos.\n\nPara acessar os grupos, regularize sua situação na página "Assinaturas".')
+          }
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
@@ -414,11 +419,6 @@ export default function GroupManager() {
                   <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
                   {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
                 </Button>
-                {!canSelectNewGroups && (
-                  <p className="text-xs text-yellow-600 mt-1">
-                    Botão desabilitado: {selectionReason || 'Sem acesso aos grupos'}
-                  </p>
-                )}
               </div>
             </div>
           </div>
