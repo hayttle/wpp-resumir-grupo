@@ -8,6 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { Users, Search, UserPlus, Edit, Trash2, Shield, Mail, Calendar } from 'lucide-react'
 import { UserService } from '@/lib/services/userService'
 import { useAuth } from '@/contexts/AuthContext'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { useToast } from '@/components/ui/toast'
+
 
 interface User {
   id: string
@@ -20,11 +23,14 @@ interface User {
 
 export default function AdminUsersManager() {
   const { user: currentUser } = useAuth()
+  const { addToast } = useToast()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Carregar usuários
   useEffect(() => {
@@ -41,6 +47,74 @@ export default function AdminUsersManager() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Abrir modal de confirmação
+  const handleDeleteUser = (user: User) => {
+    if (user.role === 'admin') {
+      addToast({
+        type: 'warning',
+        title: 'Ação não permitida',
+        message: 'Não é possível deletar usuários administradores'
+      })
+      return
+    }
+
+    if (user.id === currentUser?.id) {
+      addToast({
+        type: 'warning',
+        title: 'Ação não permitida',
+        message: 'Você não pode deletar sua própria conta'
+      })
+      return
+    }
+
+    setUserToDelete(user)
+  }
+
+  // Confirmar deleção
+  const confirmDelete = async () => {
+    if (!userToDelete) return
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/admin/users?userId=${userToDelete.id}`, {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Remover usuário da lista local
+        setUsers(users.filter(u => u.id !== userToDelete.id))
+        addToast({
+          type: 'success',
+          title: 'Usuário removido',
+          message: `Usuário "${userToDelete.name}" foi removido com sucesso`
+        })
+        setUserToDelete(null)
+      } else {
+        addToast({
+          type: 'error',
+          title: 'Erro ao remover usuário',
+          message: data.error || 'Erro desconhecido'
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao deletar usuário:', error)
+      addToast({
+        type: 'error',
+        title: 'Erro interno',
+        message: 'Tente novamente em alguns instantes'
+      })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // Cancelar deleção
+  const cancelDelete = () => {
+    setUserToDelete(null)
   }
 
   // Filtrar usuários por busca
@@ -76,7 +150,11 @@ export default function AdminUsersManager() {
       setIsEditing(false)
     } catch (error) {
       console.error('Erro ao atualizar usuário:', error)
-      alert('Erro ao atualizar usuário. Tente novamente.')
+      addToast({
+        type: 'error',
+        title: 'Erro ao atualizar',
+        message: 'Não foi possível atualizar o usuário. Tente novamente.'
+      })
     }
   }
 
@@ -98,26 +176,15 @@ export default function AdminUsersManager() {
       ))
     } catch (error) {
       console.error('Erro ao alterar role:', error)
-      alert('Erro ao alterar role. Tente novamente.')
+      addToast({
+        type: 'error',
+        title: 'Erro ao alterar role',
+        message: 'Não foi possível alterar o papel do usuário. Tente novamente.'
+      })
     }
   }
 
-  // Deletar usuário (com confirmação)
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Tem certeza que deseja deletar o usuário "${userName}"? Esta ação não pode ser desfeita.`)) {
-      return
-    }
 
-    try {
-      await UserService.deleteUser(userId)
-
-      // Remover da lista local
-      setUsers(prev => prev.filter(u => u.id !== userId))
-    } catch (error) {
-      console.error('Erro ao deletar usuário:', error)
-      alert('Erro ao deletar usuário. Tente novamente.')
-    }
-  }
 
   if (loading) {
     return (
@@ -277,8 +344,8 @@ export default function AdminUsersManager() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteUser(user.id, user.name || user.email)}
-                          disabled={currentUser?.id === user.id}
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={currentUser?.id === user.id || user.role === 'admin'}
                           className="text-red-600 hover:bg-red-50 hover:text-red-700"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -346,6 +413,28 @@ export default function AdminUsersManager() {
           </div>
         </div>
       )}
+
+      {/* Modal de confirmação de remoção */}
+      <ConfirmModal
+        isOpen={!!userToDelete}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        title="Confirmar Remoção"
+        message={`Tem certeza que deseja remover o usuário "${userToDelete?.name}"?
+
+Esta ação irá deletar PERMANENTEMENTE:
+• Conta do usuário
+• Todas as instâncias do WhatsApp
+• Todos os grupos selecionados
+• Todas as assinaturas
+• Todas as mensagens e resumos
+• Todos os agendamentos
+
+Esta ação NÃO PODE ser desfeita!`}
+        confirmText="Sim, Remover"
+        cancelText="Cancelar"
+        isLoading={isDeleting}
+      />
     </div>
   )
 }
