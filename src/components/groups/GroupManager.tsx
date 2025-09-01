@@ -89,6 +89,8 @@ export default function GroupManager() {
       try {
         // Fazer uma checagem inicial para ver se pode acessar grupos
         const result = await GroupService.fetchAllGroups(instance.instance_name)
+        
+        console.log('🔍 Checagem inicial completa:', result)
 
         if (!result.canSelectNewGroups) {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
@@ -100,6 +102,8 @@ export default function GroupManager() {
           if (result.reason === 'Existe pagamento vencido') {
             alert('⚠️ Você possui pagamentos vencidos.\n\nPara acessar os grupos, regularize sua situação na página "Assinaturas".')
           }
+        } else {
+          console.log('✅ Checagem inicial: Usuário pode acessar grupos')
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
