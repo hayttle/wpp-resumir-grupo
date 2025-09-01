@@ -67,7 +67,6 @@ export default function SubscriptionsPage() {
       if (response.ok) {
         setPlans(data.plans || [])
       } else {
-        console.error('Erro ao buscar planos:', data.error)
         addToast({
           title: 'Erro',
           message: 'Não foi possível carregar os planos disponíveis',
@@ -75,7 +74,6 @@ export default function SubscriptionsPage() {
         })
       }
     } catch (error) {
-      console.error('Erro ao buscar planos:', error)
       addToast({
         title: 'Erro',
         message: 'Erro ao conectar com o servidor',
@@ -95,7 +93,6 @@ export default function SubscriptionsPage() {
       if (response.ok) {
         setSubscriptions(data.subscriptions || [])
       } else {
-        console.error('Erro ao buscar assinaturas:', data.error)
         addToast({
           title: 'Erro',
           message: 'Não foi possível carregar suas assinaturas',
@@ -103,7 +100,6 @@ export default function SubscriptionsPage() {
         })
       }
     } catch (error) {
-      console.error('Erro ao buscar assinaturas:', error)
       addToast({
         title: 'Erro',
         message: 'Erro ao conectar com o servidor',
@@ -117,18 +113,14 @@ export default function SubscriptionsPage() {
     if (!user?.id) return
 
     try {
-      console.log('Buscando pagamentos para usuário:', user.id)
       const response = await fetch(`/api/payments?userId=${user.id}`)
       const data = await response.json()
 
       if (response.ok) {
-        console.log('Pagamentos recebidos:', data.payments)
         setPayments(data.payments || [])
-      } else {
-        console.error('Erro ao buscar pagamentos:', data.error)
       }
     } catch (error) {
-      console.error('Erro ao buscar pagamentos:', error)
+      // Erro silencioso
     }
   }
 
@@ -143,14 +135,7 @@ export default function SubscriptionsPage() {
       ])
       setLoading(false)
 
-      // Teste de formatação de moeda
-      if (plans.length > 0) {
-        console.log('🧪 Teste de formatação de moeda:', {
-          planPrice: plans[0].price,
-          planPriceType: typeof plans[0].price,
-          formatted: formatCurrency(plans[0].price)
-        })
-      }
+
     }
 
     loadData()
@@ -161,7 +146,7 @@ export default function SubscriptionsPage() {
     if (!user?.id) return
 
     const interval = setInterval(() => {
-      console.log('Atualizando dados automaticamente...')
+
       fetchSubscriptions()
       fetchPayments()
     }, 30000) // 30 segundos
@@ -206,7 +191,7 @@ export default function SubscriptionsPage() {
         })
       }
     } catch (error) {
-      console.error('Erro ao criar assinatura:', error)
+
       addToast({
         title: 'Erro',
         message: 'Erro ao conectar com o servidor',
@@ -252,7 +237,7 @@ export default function SubscriptionsPage() {
         })
       }
     } catch (error) {
-      console.error('Erro ao cancelar assinatura:', error)
+
       addToast({
         title: 'Erro',
         message: 'Erro ao conectar com o servidor',
