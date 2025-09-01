@@ -54,7 +54,7 @@ export function SubscribeButton({ planId, planName, planPrice, className }: Subs
       // Abrir link de pagamento em nova janela
       if (result.payment_url) {
         window.open(result.payment_url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
-        
+
         addToast({
           type: 'success',
           title: 'Assinatura Criada',
@@ -66,7 +66,7 @@ export function SubscribeButton({ planId, planName, planPrice, className }: Subs
 
     } catch (error) {
       console.error('❌ Erro ao criar assinatura:', error)
-      
+
       addToast({
         type: 'error',
         title: 'Erro',

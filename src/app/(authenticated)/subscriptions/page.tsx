@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { SubscribeButton } from '@/components/subscription'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface Plan {
@@ -95,12 +95,16 @@ export default function SubscriptionsPage() {
                 </ul>
                 
                 <div className="pt-4">
-                  <SubscribeButton
-                    planId={plan.id}
-                    planName={plan.name}
-                    planPrice={plan.price}
+                  <Button
+                    onClick={() => {
+                      // Redirecionar para a página de assinatura do Asaas
+                      const planUrl = process.env.NEXT_PUBLIC_ASAAS_PLAN_URL || 'https://www.asaas.com/assinatura'
+                      window.open(planUrl, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes')
+                    }}
                     className="w-full bg-whatsapp-primary hover:bg-whatsapp-primary-dark"
-                  />
+                  >
+                    Assinar {plan.name} - R$ {plan.price.toFixed(2)}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
