@@ -47,9 +47,37 @@ export interface Subscription {
   next_billing_date: string
   asaas_subscription_id?: string
   group_id?: string // ID do grupo do WhatsApp vinculado a esta assinatura
+  customer?: string // ID do customer no Asaas
+  billing_type?: 'CREDIT_CARD' | 'BOLETO' | 'PIX' | 'UNDEFINED'
+  value?: number
+  cycle?: 'MONTHLY' | 'YEARLY'
+  description?: string
+  fine_value?: number
+  fine_type?: 'FIXED' | 'PERCENTAGE'
+  interest_value?: number
+  interest_type?: 'PERCENTAGE'
   created_at: string
   updated_at?: string
   subscription_plans?: SubscriptionPlan
+}
+
+export interface Payment {
+  id: string
+  subscription_id: string
+  asaas_payment_id: string
+  user_id: string
+  value: number
+  status: 'PENDING' | 'CONFIRMED' | 'OVERDUE' | 'REFUNDED' | 'CANCELLED' | 'RECEIVED' | 'RECEIVED_IN_CASH_APP'
+  billing_type: 'CREDIT_CARD' | 'BOLETO' | 'PIX' | 'UNDEFINED'
+  due_date: string
+  payment_date?: string
+  description?: string
+  external_reference?: string
+  invoice_url?: string
+  bank_slip_url?: string
+  transaction_receipt_url?: string
+  created_at: string
+  updated_at?: string
 }
 
 export interface Instance {
@@ -124,6 +152,7 @@ export type UserInsert = Omit<User, 'id' | 'created_at' | 'updated_at'>
 export type PlanInsert = Omit<Plan, 'id' | 'created_at' | 'updated_at'>
 export type SubscriptionPlanInsert = Omit<SubscriptionPlan, 'id' | 'created_at' | 'updated_at'>
 export type SubscriptionInsert = Omit<Subscription, 'id' | 'created_at' | 'updated_at'>
+export type PaymentInsert = Omit<Payment, 'id' | 'created_at' | 'updated_at'>
 export type InstanceInsert = Omit<Instance, 'id' | 'created_at' | 'updated_at'>
 // Tipo para inserção de seleção de grupo
 export type GroupSelectionInsert = Omit<GroupSelection, 'id' | 'created_at' | 'updated_at'>
@@ -136,6 +165,7 @@ export type UserUpdate = Partial<Omit<User, 'id' | 'created_at'>>
 export type PlanUpdate = Partial<Omit<Plan, 'id' | 'created_at'>>
 export type SubscriptionPlanUpdate = Partial<Omit<SubscriptionPlan, 'id' | 'created_at'>>
 export type SubscriptionUpdate = Partial<Omit<Subscription, 'id' | 'created_at'>>
+export type PaymentUpdate = Partial<Omit<Payment, 'id' | 'created_at'>>
 export type InstanceUpdate = Partial<Omit<Instance, 'id' | 'created_at'>>
 // Tipo para atualização de seleção de grupo
 export type GroupSelectionUpdate = Partial<Omit<GroupSelection, 'id' | 'created_at'>>

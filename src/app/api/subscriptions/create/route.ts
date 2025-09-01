@@ -1,34 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionService'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { AsaasService } from '@/lib/services/asaasService'
-import { serverEnv } from '@/lib/config/server-env'
+import { Logger } from '@/lib/utils/logger'
+
+const logger = new Logger('SubscriptionCreateAPI')
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, planId } = await request.json()
+    const { userId, planId, groupId } = await request.json()
 
+    logger.info('Criando nova assinatura', { userId, planId, groupId })
+
+    // Validar dados de entrada
     if (!userId || !planId) {
       return NextResponse.json(
-        { error: { message: 'userId e planId são obrigatórios' } },
+        { error: 'userId e planId são obrigatórios' },
         { status: 400 }
       )
     }
 
-    // 1. Buscar usuário
+    // Verificar se o usuário existe
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
-      .select('*')
+      .select('id, name, email, asaas_customer_id')
       .eq('id', userId)
       .single()
 
     if (userError || !user) {
+      logger.error('Usuário não encontrado', { userId, error: userError })
       return NextResponse.json(
-        { error: { message: 'Usuário não encontrado' } },
+        { error: 'Usuário não encontrado' },
         { status: 404 }
       )
     }
 
-    // 2. Buscar plano
+    // Verificar se o plano existe
     const { data: plan, error: planError } = await supabaseAdmin
       .from('subscription_plans')
       .select('*')
@@ -36,80 +42,64 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (planError || !plan) {
+      logger.error('Plano não encontrado', { planId, error: planError })
       return NextResponse.json(
-        { error: { message: 'Plano não encontrado' } },
+        { error: 'Plano não encontrado' },
         { status: 404 }
       )
     }
 
-    // 3. Verificar se usuário já tem customer no Asaas
+    // Verificar se o usuário já tem asaas_customer_id
     if (!user.asaas_customer_id) {
+      logger.error('Usuário não tem customer_id do Asaas', { userId })
       return NextResponse.json(
-        { error: { message: 'Usuário não possui customer no Asaas' } },
+        { error: 'Usuário não possui customer_id do Asaas' },
         { status: 400 }
       )
     }
 
-    // 4. Criar assinatura no banco de dados
-    const subscriptionData = {
-      user_id: userId,
-      plan_id: planId,
-      status: 'pending',
-      start_date: new Date().toISOString(),
-      next_billing_date: new Date().toISOString(),
-      external_reference: `${userId}-${planId}-${Date.now()}`
-    }
+    // Criar assinatura usando o novo serviço
+    const { subscription, asaasSubscription } = await AsaasSubscriptionService.createSubscription(
+      userId,
+      planId,
+      groupId
+    )
 
-    const { data: subscription, error: subscriptionError } = await supabaseAdmin
-      .from('subscriptions')
-      .insert(subscriptionData)
-      .select()
-      .single()
-
-    if (subscriptionError) {
-      console.error('❌ Erro ao criar assinatura:', subscriptionError)
-      return NextResponse.json(
-        { error: { message: 'Erro ao criar assinatura' } },
-        { status: 500 }
-      )
-    }
-
-    console.log('✅ Assinatura criada no banco:', subscription.id)
-
-    // 5. Gerar link de pagamento
-    const planUrl = serverEnv.ASAAS_PLAN_URL
-    if (!planUrl) {
-      return NextResponse.json(
-        { error: { message: 'URL do plano não configurada' } },
-        { status: 500 }
-      )
-    }
-
-    // Adicionar parâmetros ao link de pagamento
-    const paymentUrl = new URL(planUrl)
-    paymentUrl.searchParams.set('customer', user.asaas_customer_id)
-    paymentUrl.searchParams.set('subscription_id', subscription.id)
-    paymentUrl.searchParams.set('plan_name', plan.name)
-    paymentUrl.searchParams.set('amount', plan.price.toString())
-    paymentUrl.searchParams.set('external_reference', subscription.external_reference)
-
-    console.log('🔗 Link de pagamento gerado:', paymentUrl.toString())
+    logger.info('Assinatura criada com sucesso', {
+      subscriptionId: subscription.id,
+      asaasSubscriptionId: asaasSubscription.id,
+      userId,
+      planId
+    })
 
     return NextResponse.json({
       success: true,
       subscription: {
         id: subscription.id,
         status: subscription.status,
-        external_reference: subscription.external_reference
+        asaas_subscription_id: subscription.asaas_subscription_id,
+        group_id: subscription.group_id,
+        next_billing_date: subscription.next_billing_date,
+        value: subscription.value
       },
-      payment_url: paymentUrl.toString(),
-      message: 'Assinatura criada com sucesso. Redirecionando para pagamento...'
+      asaasSubscription: {
+        id: asaasSubscription.id,
+        status: asaasSubscription.status,
+        nextDueDate: asaasSubscription.nextDueDate,
+        value: asaasSubscription.value,
+        description: asaasSubscription.description
+      },
+      message: 'Assinatura criada com sucesso'
     })
 
   } catch (error) {
-    console.error('❌ Erro ao criar assinatura:', error)
+    logger.error('Erro ao criar assinatura', { error })
+    
     return NextResponse.json(
-      { error: { message: 'Erro interno do servidor' } },
+      { 
+        error: 'Erro interno do servidor',
+        message: error instanceof Error ? error.message : 'Erro desconhecido'
+      },
       { status: 500 }
     )
   }

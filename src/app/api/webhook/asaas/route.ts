@@ -1,4 +1,4 @@
-// Rota alternativa para webhook do Asaas (singular) - redireciona para webhooks/asaas
+// Rota para webhook do Asaas (singular) - processa eventos de pagamento e assinatura
 import { NextRequest, NextResponse } from 'next/server'
 import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionService'
 import type { WebhookEvent } from '@/types/subscription'
