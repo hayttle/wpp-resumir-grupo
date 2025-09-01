@@ -41,7 +41,8 @@ export const validateServerEnv = () => {
 
 // Função para obter variável de ambiente do servidor com fallback
 export const getServerEnvVar = (key: keyof typeof serverEnv, fallback: string = ''): string => {
-  return serverEnv[key] || fallback
+  const value = serverEnv[key]
+  return typeof value === 'string' ? value : fallback
 }
 
 // Configuração específica do Asaas

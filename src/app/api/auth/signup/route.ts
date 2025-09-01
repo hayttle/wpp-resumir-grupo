@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { AsaasService } from '@/lib/services/asaasService'
 
 export async function POST(request: NextRequest) {
@@ -14,17 +14,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 1. Criar usuário no Supabase Auth
-    const { error: authError, data } = await supabase.auth.signUp({
+    // 1. Criar usuário no Supabase Auth usando admin
+    const { error: authError, data } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          name: userData.name,
-          phone_number: userData.phone_number,
-          cpf_cnpj: userData.cpf_cnpj,
-          person_type: userData.person_type
-        }
+      email_confirm: true,
+      user_metadata: {
+        name: userData.name,
+        phone_number: userData.phone_number,
+        cpf_cnpj: userData.cpf_cnpj,
+        person_type: userData.person_type
       }
     })
 
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
         console.log('✅ Customer criado no Asaas:', asaasCustomer.id)
 
         // 3. Atualizar usuário com o customer_id do Asaas
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
           .from('users')
           .update({ asaas_customer_id: asaasCustomer.id })
           .eq('id', data.user.id)
