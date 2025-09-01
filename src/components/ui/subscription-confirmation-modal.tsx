@@ -79,25 +79,7 @@ export function SubscriptionConfirmationModal({
             </div>
           </div>
 
-          {/* Informações do Plano */}
-          <div className="space-y-2">
-            <h3 className="font-semibold text-sm text-muted-foreground">Plano de Assinatura</h3>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-medium">{plan.name}</span>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                  {formatCurrency(plan.price)}/mês
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-600 mb-2">
-                {plan.description}
-              </p>
-              <div className="flex items-center gap-1 text-sm text-gray-500">
-                <Calendar className="h-3 w-3" />
-                <span>Renovação mensal</span>
-              </div>
-            </div>
-          </div>
+
 
           {/* Resumo */}
           <div className="space-y-2">
