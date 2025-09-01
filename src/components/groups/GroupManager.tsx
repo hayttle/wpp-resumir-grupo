@@ -81,6 +81,28 @@ export default function GroupManager() {
     recalculateSelectionCapability()
   }, [recalculateSelectionCapability])
 
+  // Checagem inicial de capacidade de acesso aos grupos
+  useEffect(() => {
+    const checkInitialAccess = async () => {
+      if (!user || !instance?.instance_name) return
+
+      try {
+        // Fazer uma checagem inicial para ver se pode acessar grupos
+        const result = await GroupService.fetchAllGroups(instance.instance_name)
+        
+        if (!result.canSelectNewGroups) {
+          console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
+          setCanSelectNewGroups(false)
+          setSelectionReason(result.reason)
+        }
+      } catch (error) {
+        console.error('❌ Erro na checagem inicial de acesso:', error)
+      }
+    }
+
+    checkInitialAccess()
+  }, [user, instance?.instance_name])
+
   const fetchAllGroups = async () => {
     if (!instance?.instance_name) {
       alert('Instância não encontrada')
@@ -96,10 +118,30 @@ export default function GroupManager() {
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
 
+      // Se não pode selecionar grupos, mostrar apenas grupos já selecionados
+      if (!result.canSelectNewGroups) {
+        console.log('⚠️ Usuário não pode selecionar novos grupos:', result.reason)
+        // Manter apenas grupos já selecionados na lista
+        const selectedGroupIds = selectedGroups.map(gs => gs.group_id)
+        const filteredGroups = result.groups.filter(group => 
+          selectedGroupIds.includes(group.id)
+        )
+        
+        const groupsWithStatus: GroupWithSelectionStatus[] = filteredGroups.map(group => ({
+          ...group,
+          isSelected: true,
+          canSelect: false
+        }))
+        
+        setGroups(groupsWithStatus)
+        return
+      }
+
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
       const groupsWithStatus: GroupWithSelectionStatus[] = result.groups.map(group => ({
         ...group,
-        isSelected: selectedGroups.some(selection => selection.group_id === group.id)
+        isSelected: selectedGroups.some(selection => selection.group_id === group.id),
+        canSelect: result.canSelectNewGroups
       }))
       setGroups(groupsWithStatus)
 
