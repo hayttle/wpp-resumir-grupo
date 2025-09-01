@@ -89,7 +89,7 @@ export default function GroupManager() {
       try {
         // Fazer uma checagem inicial para ver se pode acessar grupos
         const result = await GroupService.fetchAllGroups(instance.instance_name)
-        
+
         if (!result.canSelectNewGroups) {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
           setCanSelectNewGroups(false)
@@ -123,16 +123,16 @@ export default function GroupManager() {
         console.log('⚠️ Usuário não pode selecionar novos grupos:', result.reason)
         // Manter apenas grupos já selecionados na lista
         const selectedGroupIds = selectedGroups.map(gs => gs.group_id)
-        const filteredGroups = result.groups.filter(group => 
+        const filteredGroups = result.groups.filter(group =>
           selectedGroupIds.includes(group.id)
         )
-        
+
         const groupsWithStatus: GroupWithSelectionStatus[] = filteredGroups.map(group => ({
           ...group,
           isSelected: true,
           canSelect: false
         }))
-        
+
         setGroups(groupsWithStatus)
         return
       }
@@ -408,12 +408,17 @@ export default function GroupManager() {
               <div className="flex gap-2">
                 <Button
                   onClick={fetchAllGroups}
-                  disabled={fetchingGroups}
+                  disabled={fetchingGroups || !canSelectNewGroups}
                   className="flex items-center gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${fetchingGroups ? 'animate-spin' : ''}`} />
                   {fetchingGroups ? 'Buscando...' : 'Buscar Grupos'}
                 </Button>
+                {!canSelectNewGroups && (
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Botão desabilitado: {selectionReason || 'Sem acesso aos grupos'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
