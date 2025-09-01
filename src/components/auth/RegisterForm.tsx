@@ -79,7 +79,13 @@ export function RegisterForm() {
       return
     }
 
-    if (cpfCnpj && !isValidCPFOrCNPJ(cpfCnpj)) {
+    if (!cpfCnpj) {
+      setError('CPF ou CNPJ é obrigatório')
+      setLoading(false)
+      return
+    }
+
+    if (!isValidCPFOrCNPJ(cpfCnpj)) {
       setError('CPF ou CNPJ inválido')
       setLoading(false)
       return
@@ -89,7 +95,7 @@ export function RegisterForm() {
       const { error } = await signUp(email, password, {
         name,
         phone_number: phoneNumber || undefined,
-        cpf_cnpj: cpfCnpj ? onlyNumbers(cpfCnpj) : undefined,
+        cpf_cnpj: onlyNumbers(cpfCnpj),
         person_type: personType
       })
 
@@ -192,7 +198,7 @@ export function RegisterForm() {
 
             <div>
               <label htmlFor="cpf-cnpj" className="block text-sm font-medium text-whatsapp-text mb-2">
-                CPF ou CNPJ (opcional)
+                CPF ou CNPJ *
               </label>
               <Input
                 id="cpf-cnpj"
@@ -201,6 +207,7 @@ export function RegisterForm() {
                 onChange={(e) => handleCpfCnpjChange(e.target.value)}
                 placeholder="000.000.000-00 ou 00.000.000/0000-00"
                 maxLength={18}
+                required
                 className="border-whatsapp-background"
               />
               {cpfCnpj && (
