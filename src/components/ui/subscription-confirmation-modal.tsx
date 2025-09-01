@@ -76,11 +76,6 @@ export function SubscriptionConfirmationModal({
               <div className="text-sm text-gray-600">
                 {group.size} membros
               </div>
-              {group.desc && (
-                <div className="text-sm text-gray-500 mt-1">
-                  {group.desc}
-                </div>
-              )}
             </div>
           </div>
 
