@@ -447,14 +447,39 @@ export default function GroupManager() {
             </div>
           </div>
 
-          {/* Mensagem de validação de assinatura */}
-          {!canSelectNewGroups && (
+          {/* Banner para pagamento vencido */}
+          {!canSelectNewGroups && selectionReason === 'Existe pagamento vencido' && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg mt-3">
+              <div className="flex items-center gap-2 text-red-700">
+                <AlertCircle className="h-4 w-4" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium">
+                    ⚠️ Existe pagamento vencido
+                  </span>
+                  <p className="text-xs text-red-600 mt-1">
+                    Para acessar os grupos, regularize sua situação na página "Assinaturas"
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/subscriptions'}
+                  className="ml-2 border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Ver Assinaturas
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Banner para limite de grupos atingido */}
+          {!canSelectNewGroups && selectionReason?.includes('Limite de') && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
               <div className="flex items-center gap-2 text-yellow-700">
                 <AlertCircle className="h-4 w-4" />
                 <div className="flex-1">
                   <span className="text-sm font-medium">
-                    ⚠️ {selectionReason || 'Você atingiu o limite de grupos do seu plano atual'}
+                    ⚠️ {selectionReason}
                   </span>
                   <p className="text-xs text-yellow-600 mt-1">
                     Para selecionar mais grupos, adquira mais assinatura na página "Assinaturas"
@@ -464,7 +489,32 @@ export default function GroupManager() {
                   variant="outline"
                   size="sm"
                   onClick={() => window.location.href = '/subscriptions'}
-                  className="ml-2"
+                  className="ml-2 border-yellow-300 text-yellow-700 hover:bg-yellow-100"
+                >
+                  Ver Assinaturas
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Banner para nenhuma assinatura */}
+          {!canSelectNewGroups && (selectionReason === 'Nenhuma assinatura encontrada' || selectionReason === 'Nenhuma assinatura ativa encontrada') && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mt-3">
+              <div className="flex items-center gap-2 text-blue-700">
+                <AlertCircle className="h-4 w-4" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium">
+                    ℹ️ {selectionReason}
+                  </span>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Para acessar os grupos, você precisa de uma assinatura ativa. Acesse a página "Assinaturas"
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/subscriptions'}
+                  className="ml-2 border-blue-300 text-blue-700 hover:bg-blue-100"
                 >
                   Ver Assinaturas
                 </Button>
