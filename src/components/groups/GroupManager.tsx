@@ -109,11 +109,6 @@ export default function GroupManager() {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
-
-          // Alert específico para pagamento vencido
-          if (result.reason === 'Existe pagamento vencido') {
-            alert('⚠️ Você possui pagamentos vencidos.\n\nPara acessar os grupos, regularize sua situação na página "Assinaturas".')
-          }
         } else {
           console.log('✅ Checagem inicial: Usuário pode acessar grupos')
         }
