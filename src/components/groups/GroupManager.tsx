@@ -213,6 +213,13 @@ export default function GroupManager() {
         // Fechar modal
         setShowSubscriptionModal(false)
         setSelectedGroupForSubscription(null)
+
+        // Redirecionar para o pagamento se houver invoice_url
+        if (result.invoiceUrl) {
+          window.open(result.invoiceUrl, '_blank')
+        } else {
+          alert('Assinatura criada com sucesso! Verifique sua página de assinaturas para o link de pagamento.')
+        }
       }
     } catch (error: any) {
       console.error('❌ Erro ao criar assinatura:', error)

@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Obter dados do request
-    const { action, instanceName, groupSelection } = await request.json()
+    const body = await request.json()
+    const { action, instanceName, groupSelection } = body
     
     if (!action) {
       return NextResponse.json(
@@ -423,11 +424,27 @@ async function createSubscriptionForGroup(groupId: string, planId: string, userI
 
     console.log('✅ Seleção de grupo criada:', { selectionId: savedSelection.id })
 
+    // Buscar o pagamento criado para obter o invoice_url
+    const { data: payment, error: paymentError } = await supabase
+      .from('payments')
+      .select('invoice_url')
+      .eq('subscription_id', subscription.id)
+      .eq('status', 'PENDING')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (paymentError) {
+      console.error('❌ Erro ao buscar pagamento:', paymentError)
+      // Continuar mesmo sem o invoice_url
+    }
+
     return NextResponse.json({
       success: true,
       subscription,
       asaasSubscription,
-      groupSelection: savedSelection
+      groupSelection: savedSelection,
+      invoiceUrl: payment?.invoice_url || null
     })
 
   } catch (error) {
