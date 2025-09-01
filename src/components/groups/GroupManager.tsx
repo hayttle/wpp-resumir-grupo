@@ -92,9 +92,10 @@ export default function GroupManager() {
 
         if (!result.canSelectNewGroups) {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
+          console.log('🔍 Debug - canSelectNewGroups:', result.canSelectNewGroups, 'reason:', result.reason)
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
-          
+
           // Alert específico para pagamento vencido
           if (result.reason === 'Existe pagamento vencido') {
             alert('⚠️ Você possui pagamentos vencidos.\n\nPara acessar os grupos, regularize sua situação na página "Assinaturas".')
@@ -434,6 +435,7 @@ export default function GroupManager() {
           </div>
 
           {/* Mensagem de validação de assinatura */}
+          {console.log('🔍 Debug Banner - canSelectNewGroups:', canSelectNewGroups, 'selectionReason:', selectionReason)}
           {!canSelectNewGroups && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
               <div className="flex items-center gap-2 text-yellow-700">
