@@ -1,61 +1,58 @@
 // API Routes para gerenciar assinaturas - Modelo 1 assinatura = 1 grupo
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionService'
-import { validateServerEnv, serverEnv } from '@/lib/config/server-env'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { Logger } from '@/lib/utils/logger'
 
-// Inicializar Supabase admin client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  serverEnv.SUPABASE_SERVICE_ROLE_KEY
-)
+const logger = new Logger('SubscriptionsAPI')
 
-// Função para obter usuário autenticado
-async function getAuthenticatedUser(request: NextRequest) {
-  const authHeader = request.headers.get('Authorization')
-  
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
-  }
-
-  const token = authHeader.substring(7)
-  const { data: { user }, error } = await supabase.auth.getUser(token)
-  
-  if (error || !user) {
-    return null
-  }
-
-  return user
-}
-
-// GET - Listar assinaturas do usuário
 export async function GET(request: NextRequest) {
   try {
-    // Verificar variáveis de ambiente
-    if (!validateServerEnv()) {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get('userId')
+
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Configuração do servidor inválida' },
+        { error: 'userId é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    logger.info('Buscando assinaturas do usuário', { userId })
+
+    const { data: subscriptions, error } = await supabaseAdmin
+      .from('subscriptions')
+      .select(`
+        *,
+        subscription_plans (
+          name,
+          description,
+          features,
+          maxGroups,
+          maxInstances
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      logger.error('Erro ao buscar assinaturas', { error, userId })
+      return NextResponse.json(
+        { error: 'Erro ao buscar assinaturas' },
         { status: 500 }
       )
     }
 
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
-    }
-
-    const subscriptions = await AsaasSubscriptionService.getUserSubscriptions(user.id)
+    logger.info('Assinaturas encontradas', { 
+      userId, 
+      count: subscriptions?.length || 0 
+    })
 
     return NextResponse.json({
-      subscriptions,
-      count: subscriptions.length
+      subscriptions: subscriptions || []
     })
 
   } catch (error) {
-    console.error('Erro ao buscar assinaturas:', error)
+    logger.error('Erro interno ao buscar assinaturas', { error })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }
