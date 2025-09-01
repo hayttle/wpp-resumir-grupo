@@ -19,7 +19,7 @@ interface GroupWithSelectionStatus extends WhatsAppGroup {
 
 export default function GroupManager() {
   const { user } = useAuth()
-  const { instance, updatingStatus, updateInstanceStatus } = useInstanceStatus()
+  const { instance } = useInstanceStatus()
   const [groups, setGroups] = useState<GroupWithSelectionStatus[]>([])
   const [selectedGroups, setSelectedGroups] = useState<GroupSelection[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,13 +35,7 @@ export default function GroupManager() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  // Atualizar status da instância apenas se existe uma instância
-  useEffect(() => {
-    if (instance && user) {
-      updateInstanceStatus()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [instance, user])
+
 
   const loadUserGroupSelections = useCallback(async () => {
     try {
