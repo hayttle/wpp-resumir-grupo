@@ -9,8 +9,9 @@ import { RefreshCw, Users, Check, Plus, AlertCircle, Search } from 'lucide-react
 import { GroupService } from '@/lib/services/groupService'
 import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 import { useAuth } from '@/contexts/AuthContext'
-import { WhatsAppGroup, GroupSelection } from '@/types/database'
+import { WhatsAppGroup, GroupSelection, Plan } from '@/types/database'
 import { formatDateTime } from '@/lib/utils/formatters'
+import { SubscriptionConfirmationModal } from '@/components/ui/subscription-confirmation-modal'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
@@ -50,6 +51,12 @@ export default function GroupManager() {
   const [selectionReason, setSelectionReason] = useState<string>()
   const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
   const [maxGroupsFromBackend, setMaxGroupsFromBackend] = useState(1)
+  
+  // Estados para o modal de confirmação
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [selectedGroupForSubscription, setSelectedGroupForSubscription] = useState<WhatsAppGroup | null>(null)
+  const [plan, setPlan] = useState<Plan | null>(null)
+  const [creatingSubscription, setCreatingSubscription] = useState(false)
 
   // Função para recalcular a capacidade de seleção de grupos baseada no estado local
   const recalculateSelectionCapability = useCallback(() => {
@@ -177,34 +184,82 @@ export default function GroupManager() {
     }
   }
 
-  const selectGroup = async (group: WhatsAppGroup) => {
+  // Buscar plano disponível
+  const fetchPlan = async () => {
     try {
+      const response = await fetch('/api/plans')
+      const data = await response.json()
+      
+      if (response.ok && data.plans && data.plans.length > 0) {
+        setPlan(data.plans[0]) // Usar o primeiro plano disponível
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar plano:', error)
+    }
+  }
 
+  // Função para abrir modal de confirmação
+  const handleSelectGroup = async (group: WhatsAppGroup) => {
+    if (!plan) {
+      await fetchPlan()
+    }
+    setSelectedGroupForSubscription(group)
+    setShowSubscriptionModal(true)
+  }
 
-      const groupSelection = await GroupService.saveGroupSelection({
-        user_id: user!.id,
-        instance_id: '', // Será preenchido pelo backend
-        group_name: group.subject,
-        group_id: group.id,
-        active: true
+  // Função para confirmar criação da assinatura
+  const handleConfirmSubscription = async () => {
+    if (!selectedGroupForSubscription || !plan || !user) return
+
+    try {
+      setCreatingSubscription(true)
+
+      // Criar assinatura para o grupo
+      const response = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'createSubscriptionForGroup',
+          groupId: selectedGroupForSubscription.id,
+          planId: plan.id
+        })
       })
 
-      if (groupSelection) {
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao criar assinatura')
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
         // Atualizar lista de grupos com status de seleção
         setGroups(prevGroups =>
           prevGroups.map(g =>
-            g.id === group.id ? { ...g, isSelected: true } : g
+            g.id === selectedGroupForSubscription.id ? { ...g, isSelected: true } : g
           )
         )
 
         // Adicionar à lista de grupos selecionados
-        setSelectedGroups(prev => [groupSelection, ...prev])
+        setSelectedGroups(prev => [result.groupSelection, ...prev])
 
+        // Fechar modal
+        setShowSubscriptionModal(false)
+        setSelectedGroupForSubscription(null)
       }
     } catch (error: any) {
-      console.error('❌ Erro ao selecionar grupo:', error)
-      // Erro tratado silenciosamente - o usuário verá o feedback através da UI
+      console.error('❌ Erro ao criar assinatura:', error)
+      alert('Erro ao criar assinatura. Tente novamente.')
+    } finally {
+      setCreatingSubscription(false)
     }
+  }
+
+  const selectGroup = async (group: WhatsAppGroup) => {
+    // Esta função agora só abre o modal
+    await handleSelectGroup(group)
   }
 
   const deselectGroup = async (groupSelection: GroupSelection) => {
@@ -758,6 +813,21 @@ export default function GroupManager() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Modal de Confirmação de Assinatura */}
+      {plan && selectedGroupForSubscription && (
+        <SubscriptionConfirmationModal
+          isOpen={showSubscriptionModal}
+          onClose={() => {
+            setShowSubscriptionModal(false)
+            setSelectedGroupForSubscription(null)
+          }}
+          onConfirm={handleConfirmSubscription}
+          plan={plan}
+          group={selectedGroupForSubscription}
+          loading={creatingSubscription}
+        />
       )}
     </div>
   )

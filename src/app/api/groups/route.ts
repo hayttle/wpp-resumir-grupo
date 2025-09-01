@@ -81,6 +81,8 @@ export async function POST(request: NextRequest) {
       return await removeGroupSelection(groupSelection, user.id, supabase)
     } else if (action === 'checkPermissions') {
       return await checkUserPermissions(user.id)
+    } else if (action === 'createSubscriptionForGroup') {
+      return await createSubscriptionForGroup(body.groupId, body.planId, user.id, supabase)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -367,6 +369,73 @@ async function checkUserPermissions(userId: string) {
     console.error('❌ Erro ao verificar permissões:', error)
     return NextResponse.json(
       { error: 'Erro ao verificar permissões' },
+      { status: 500 }
+    )
+  }
+}
+
+// Função para criar assinatura para um grupo específico
+async function createSubscriptionForGroup(groupId: string, planId: string, userId: string, supabase: any) {
+  try {
+    console.log('🔍 Criando assinatura para grupo:', { groupId, planId, userId })
+
+    // Verificar se o grupo já tem uma assinatura
+    const { data: existingSubscription, error: checkError } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') throw checkError
+
+    if (existingSubscription) {
+      return NextResponse.json(
+        { error: 'Este grupo já possui uma assinatura' },
+        { status: 400 }
+      )
+    }
+
+    // Criar assinatura usando o AsaasSubscriptionService
+    const { subscription, asaasSubscription } = await AsaasSubscriptionService.createSubscriptionForGroup(
+      userId,
+      planId,
+      groupId
+    )
+
+    console.log('✅ Assinatura criada:', { subscriptionId: subscription.id, asaasId: asaasSubscription.id })
+
+    // Criar seleção de grupo vinculada à assinatura
+    const groupSelection = {
+      user_id: userId,
+      instance_id: '', // Será preenchido quando necessário
+      group_name: '', // Será preenchido quando necessário
+      group_id: groupId,
+      subscription_id: subscription.id,
+      active: true
+    }
+
+    const { data: savedSelection, error: selectionError } = await supabase
+      .from('group_selections')
+      .insert(groupSelection)
+      .select()
+      .single()
+
+    if (selectionError) throw selectionError
+
+    console.log('✅ Seleção de grupo criada:', { selectionId: savedSelection.id })
+
+    return NextResponse.json({
+      success: true,
+      subscription,
+      asaasSubscription,
+      groupSelection: savedSelection
+    })
+
+  } catch (error) {
+    console.error('❌ Erro ao criar assinatura para grupo:', error)
+    return NextResponse.json(
+      { error: 'Erro ao criar assinatura para o grupo' },
       { status: 500 }
     )
   }

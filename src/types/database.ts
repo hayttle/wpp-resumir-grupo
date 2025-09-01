@@ -47,13 +47,12 @@ export interface Subscription {
   next_billing_date: string
   asaas_subscription_id?: string
   group_id?: string // ID do grupo do WhatsApp vinculado a esta assinatura
+  external_reference?: string // Referência externa para vincular assinatura e grupo
   customer?: string // ID do customer no Asaas
   billing_type?: 'CREDIT_CARD' | 'BOLETO' | 'PIX' | 'UNDEFINED'
   value?: number
   cycle?: 'MONTHLY' | 'YEARLY'
   description?: string
-
-
   created_at: string
   updated_at?: string
   subscription_plans?: SubscriptionPlan
@@ -95,6 +94,7 @@ export interface GroupSelection {
   instance_id: string
   group_name: string
   group_id: string
+  subscription_id?: string // ID da assinatura vinculada ao grupo
   active: boolean
   created_at: string
   updated_at?: string

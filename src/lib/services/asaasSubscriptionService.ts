@@ -107,6 +107,98 @@ export class AsaasSubscriptionService {
   }
 
   // Criar assinatura usando endpoint do Asaas
+  // Criar assinatura para um grupo específico
+  static async createSubscriptionForGroup(
+    userId: string,
+    planId: string,
+    groupId: string
+  ): Promise<{ subscription: Subscription, asaasSubscription: AsaasSubscription }> {
+    try {
+      Logger.info('AsaasSubscriptionService', 'Criando assinatura para grupo', { userId, planId, groupId })
+
+      // Buscar plano
+      const { data: plan, error: planError } = await supabaseAdmin
+        .from('plans')
+        .select('*')
+        .eq('id', planId)
+        .single()
+
+      if (planError) throw planError
+      if (!plan) throw new Error('Plano não encontrado')
+
+      // Obter customer do Asaas
+      const customer = await this.getOrCreateAsaasCustomer(userId)
+
+      // Criar external_reference no formato: "group_{groupId}"
+      const externalReference = `group_${groupId}`
+
+      // Preparar dados para criação da assinatura no Asaas
+      const subscriptionData: CreateSubscriptionRequest = {
+        billingType: 'UNDEFINED' as const,
+        cycle: 'MONTHLY',
+        customer: customer.id,
+        value: plan.price,
+        nextDueDate: formatDateForDB(new Date()),
+        description: `WPP - Resumir Grupo - ${plan.name}`,
+        externalReference: externalReference
+      }
+
+      // Criar assinatura no Asaas
+      const asaasResponse = await fetch(`${ASAAS_API_URL}/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'access_token': ASAAS_API_KEY!
+        },
+        body: JSON.stringify(subscriptionData)
+      })
+
+      if (!asaasResponse.ok) {
+        const errorData = await asaasResponse.json()
+        throw new Error(`Erro ao criar assinatura no Asaas: ${errorData.message || 'Erro desconhecido'}`)
+      }
+
+      const asaasSubscription: AsaasSubscription = await asaasResponse.json()
+      Logger.info('AsaasSubscriptionService', 'Assinatura criada no Asaas', { asaasId: asaasSubscription.id })
+
+      // Salvar assinatura no banco de dados
+      const subscriptionInsert = {
+        user_id: userId,
+        plan_id: planId,
+        asaas_subscription_id: asaasSubscription.id,
+        group_id: groupId,
+        external_reference: externalReference,
+        status: asaasSubscription.status.toLowerCase(),
+        start_date: formatDateForDB(new Date()),
+        next_billing_date: convertAsaasDateToUTC(asaasSubscription.nextDueDate),
+        value: asaasSubscription.value,
+        billing_type: asaasSubscription.billingType,
+        cycle: asaasSubscription.cycle,
+        description: asaasSubscription.description
+      }
+
+      const { data: subscription, error: insertError } = await supabaseAdmin
+        .from('subscriptions')
+        .insert(subscriptionInsert)
+        .select()
+        .single()
+
+      if (insertError) throw insertError
+
+      Logger.info('AsaasSubscriptionService', 'Assinatura salva no banco', { 
+        subscriptionId: subscription.id, 
+        groupId,
+        externalReference 
+      })
+
+      return { subscription, asaasSubscription }
+
+    } catch (error) {
+      Logger.error('AsaasSubscriptionService', 'Erro ao criar assinatura para grupo', { error, userId, planId, groupId })
+      throw error
+    }
+  }
+
   static async createSubscription(
     userId: string,
     planId: string,
@@ -463,7 +555,10 @@ export class AsaasSubscriptionService {
   // Handler para SUBSCRIPTION_CREATED
   static async handleSubscriptionCreated(data: WebhookEvent): Promise<void> {
     try {
-      Logger.info('AsaasSubscriptionService', 'Processando SUBSCRIPTION_CREATED', { subscriptionId: data.subscription?.id })
+      Logger.info('AsaasSubscriptionService', 'Processando SUBSCRIPTION_CREATED', { 
+        subscriptionId: data.subscription?.id,
+        externalReference: data.subscription?.externalReference 
+      })
 
       if (!data.subscription) {
         throw new Error('Dados da assinatura não encontrados no webhook')
@@ -471,23 +566,45 @@ export class AsaasSubscriptionService {
 
       const subscription = data.subscription
 
+      // Se tem externalReference, extrair group_id
+      let groupId: string | undefined
+      if (subscription.externalReference && subscription.externalReference.startsWith('group_')) {
+        groupId = subscription.externalReference.replace('group_', '')
+        Logger.info('AsaasSubscriptionService', 'Assinatura vinculada ao grupo', { 
+          subscriptionId: subscription.id, 
+          groupId,
+          externalReference: subscription.externalReference 
+        })
+      }
+
       // Atualizar assinatura existente com dados do Asaas
+      const updateData: any = {
+        status: subscription.status.toLowerCase(),
+        next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
+        value: subscription.value,
+        billing_type: subscription.billingType,
+        cycle: subscription.cycle,
+        description: subscription.description,
+        external_reference: subscription.externalReference
+      }
+
+      // Se tem group_id, incluir na atualização
+      if (groupId) {
+        updateData.group_id = groupId
+      }
+
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
-        .update({
-          status: subscription.status.toLowerCase(),
-          next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
-          value: subscription.value,
-          billing_type: subscription.billingType,
-          cycle: subscription.cycle,
-          description: subscription.description,
-
-        })
+        .update(updateData)
         .eq('asaas_subscription_id', subscription.id)
 
       if (updateError) throw updateError
 
-      Logger.info('AsaasSubscriptionService', 'Assinatura atualizada com dados do Asaas', { subscriptionId: subscription.id })
+      Logger.info('AsaasSubscriptionService', 'Assinatura atualizada com dados do Asaas', { 
+        subscriptionId: subscription.id,
+        groupId,
+        externalReference: subscription.externalReference 
+      })
 
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao processar SUBSCRIPTION_CREATED', { error, data })
@@ -656,15 +773,15 @@ export class AsaasSubscriptionService {
     }
   }
 
-  // Verificar se usuário pode selecionar novos grupos
-  static async canSelectNewGroups(userId: string): Promise<{ canSelect: boolean, reason?: string, maxGroups?: number }> {
+  // Verificar se usuário pode selecionar novos grupos (sem limite - cada grupo tem sua assinatura)
+  static async canSelectNewGroups(userId: string): Promise<{ canSelect: boolean, reason?: string }> {
     try {
       Logger.info('AsaasSubscriptionService', 'Verificando se usuário pode selecionar novos grupos', { userId })
 
       // 1. CHEQUE SE TEM ASSINATURA VENCIDA E INFORME
       const { data: overdueSubscriptions, error: overdueError } = await supabaseAdmin
         .from('subscriptions')
-        .select('id, status')
+        .select('id, status, group_id')
         .eq('user_id', userId)
         .eq('status', 'overdue')
 
@@ -673,15 +790,16 @@ export class AsaasSubscriptionService {
       if (overdueSubscriptions && overdueSubscriptions.length > 0) {
         Logger.info('AsaasSubscriptionService', 'Usuário possui assinaturas vencidas', { 
           userId, 
-          overdueCount: overdueSubscriptions.length 
+          overdueCount: overdueSubscriptions.length,
+          overdueGroups: overdueSubscriptions.map(s => s.group_id)
         })
         return { canSelect: false, reason: 'Existe pagamento vencido' }
       }
 
-      // 2. CHEQUE A QUANTIDADE DE ASSINATURAS E SE A QUANTIDADE DE GRUPOS SELECIONADOS FOI ATINGIDO
+      // 2. CHEQUE SE NÃO TEM NENHUMA ASSINATURA ATIVA
       const { data: activeSubscriptions, error: activeError } = await supabaseAdmin
         .from('subscriptions')
-        .select('id, plan_id')
+        .select('id, plan_id, group_id')
         .eq('user_id', userId)
         .eq('status', 'active')
 
@@ -705,33 +823,12 @@ export class AsaasSubscriptionService {
         }
       }
 
-      // Verificar limite de grupos
-      const { data: currentGroups, error: groupError } = await supabaseAdmin
-        .from('group_selections')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('active', true)
-
-      if (groupError) throw groupError
-
-      const currentGroupCount = currentGroups?.length || 0
-      const maxGroups = activeSubscriptions.length // 1 assinatura = 1 grupo
-
-      if (currentGroupCount >= maxGroups) {
-        Logger.info('AsaasSubscriptionService', 'Usuário atingiu limite de grupos', { 
-          userId, 
-          currentCount: currentGroupCount, 
-          maxAllowed: maxGroups 
-        })
-        return { canSelect: false, reason: `Limite de ${maxGroups} grupo(s) atingido` }
-      }
-
+      // Usuário pode selecionar novos grupos (cada grupo terá sua própria assinatura)
       Logger.info('AsaasSubscriptionService', 'Usuário pode selecionar novos grupos', { 
         userId, 
-        currentCount: currentGroupCount, 
-        maxAllowed: maxGroups 
+        activeSubscriptions: activeSubscriptions.length
       })
-      return { canSelect: true, maxGroups }
+      return { canSelect: true }
 
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao verificar capacidade de seleção', { error, userId })
