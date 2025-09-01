@@ -480,14 +480,18 @@ export default function SubscriptionsPage() {
                                       </td>
                                       <td className="px-2 py-2">
                                         <div className="flex space-x-1">
-                                          {/* Botão PAGAR para pagamentos pendentes apenas em assinaturas ativas */}
-                                          {payment.invoice_url && payment.status === 'PENDING' && subscription.status === 'active' && (
+                                          {/* Botão PAGAR para pagamentos pendentes ou vencidos */}
+                                          {payment.invoice_url && (payment.status === 'PENDING' || payment.status === 'OVERDUE') && (
                                             <button
                                               onClick={() => window.open(payment.invoice_url, '_blank')}
-                                              className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"
-                                              title="Pagar"
+                                              className={`text-xs text-white px-2 py-1 rounded ${
+                                                payment.status === 'OVERDUE' 
+                                                  ? 'bg-red-600 hover:bg-red-700' 
+                                                  : 'bg-green-600 hover:bg-green-700'
+                                              }`}
+                                              title={payment.status === 'OVERDUE' ? 'Pagar (Vencido)' : 'Pagar'}
                                             >
-                                              PAGAR
+                                              {payment.status === 'OVERDUE' ? 'PAGAR (VENCIDO)' : 'PAGAR'}
                                             </button>
                                           )}
 
