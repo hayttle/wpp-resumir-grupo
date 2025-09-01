@@ -137,7 +137,7 @@ export function SubscriptionConfirmationModal({
               className="flex-1 bg-green-600 hover:bg-green-700"
               disabled={loading}
             >
-              {loading ? 'Criando...' : 'Confirmar Assinatura'}
+              {loading ? 'Criando...' : 'Pagamento'}
             </Button>
           </div>
         </CardContent>
