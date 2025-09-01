@@ -136,7 +136,7 @@ export default function GroupManager() {
       // Atualizar estado de capacidade de seleção
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
-      
+
       // Atualizar maxGroups do backend
       if (result.maxGroups) {
         setMaxGroupsFromBackend(result.maxGroups)
