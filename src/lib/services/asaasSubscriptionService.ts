@@ -630,87 +630,56 @@ export class AsaasSubscriptionService {
     }
   }
 
-  // Verificar se usuário pode selecionar novos grupos (tem assinatura ativa e pagamentos em dia)
+  // Verificar se usuário pode selecionar novos grupos
   static async canSelectNewGroups(userId: string): Promise<{ canSelect: boolean, reason?: string }> {
     try {
       Logger.info('AsaasSubscriptionService', 'Verificando se usuário pode selecionar novos grupos', { userId })
 
-      // Buscar todas as assinaturas do usuário para debug
-      const { data: allSubscriptions, error: allSubError } = await supabaseAdmin
+      // 1. CHEQUE SE TEM ASSINATURA VENCIDA E INFORME
+      const { data: overdueSubscriptions, error: overdueError } = await supabaseAdmin
         .from('subscriptions')
-        .select('id, status, plan_id')
+        .select('id, status')
         .eq('user_id', userId)
+        .eq('status', 'overdue')
 
-      if (allSubError) throw allSubError
+      if (overdueError) throw overdueError
 
-      Logger.info('AsaasSubscriptionService', 'Todas as assinaturas do usuário', { 
-        userId, 
-        allSubscriptions: allSubscriptions?.map(s => ({ id: s.id, status: s.status, plan_id: s.plan_id }))
-      })
-
-      // Buscar assinaturas ativas ou com pagamento vencido (overdue)
-      const { data: activeSubscriptions, error: subError } = await supabaseAdmin
-        .from('subscriptions')
-        .select('id, status, plan_id')
-        .eq('user_id', userId)
-        .in('status', ['active', 'overdue'])
-
-      if (subError) throw subError
-
-      if (!activeSubscriptions || activeSubscriptions.length === 0) {
-        Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas ou com pagamento vencido', { 
+      if (overdueSubscriptions && overdueSubscriptions.length > 0) {
+        Logger.info('AsaasSubscriptionService', 'Usuário possui assinaturas vencidas', { 
           userId, 
-          totalSubscriptions: allSubscriptions?.length || 0,
-          subscriptionStatuses: allSubscriptions?.map(s => s.status) || []
-        })
-        return { canSelect: false, reason: 'Nenhuma assinatura ativa encontrada' }
-      }
-
-      // Verificar se há assinaturas com status 'overdue' (pagamento vencido)
-      const overdueSubscriptions = activeSubscriptions.filter(sub => sub.status === 'overdue')
-      if (overdueSubscriptions.length > 0) {
-        Logger.info('AsaasSubscriptionService', 'Usuário possui assinaturas com pagamento vencido', { 
-          userId, 
-          overdueSubscriptions: overdueSubscriptions.map(s => ({ id: s.id, status: s.status }))
+          overdueCount: overdueSubscriptions.length 
         })
         return { canSelect: false, reason: 'Existe pagamento vencido' }
       }
 
-      // Buscar os planos das assinaturas para obter max_groups
-      const planIds = activeSubscriptions.map(sub => sub.plan_id)
-      const { data: plans, error: plansError } = await supabaseAdmin
-        .from('plans')
-        .select('id, max_groups')
-        .in('id', planIds)
+      // 2. CHEQUE A QUANTIDADE DE ASSINATURAS E SE A QUANTIDADE DE GRUPOS SELECIONADOS FOI ATINGIDO
+      const { data: activeSubscriptions, error: activeError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('id, plan_id')
+        .eq('user_id', userId)
+        .eq('status', 'active')
 
-      if (plansError) throw plansError
+      if (activeError) throw activeError
 
-      // Verificar se há pagamentos pendentes ou vencidos
-      for (const subscription of activeSubscriptions) {
-        const { data: payments, error: payError } = await supabaseAdmin
-          .from('payments')
-          .select('status, due_date')
-          .eq('subscription_id', subscription.id)
-          .in('status', ['PENDING', 'OVERDUE'])
-          .order('due_date', { ascending: false })
-          .limit(1)
+      if (!activeSubscriptions || activeSubscriptions.length === 0) {
+        // 3. CHEQUE SE NÃO TEM NENHUMA ASSINATURA
+        const { data: allSubscriptions, error: allError } = await supabaseAdmin
+          .from('subscriptions')
+          .select('id')
+          .eq('user_id', userId)
 
-        if (payError) throw payError
+        if (allError) throw allError
 
-        if (payments && payments.length > 0) {
-          const latestPayment = payments[0]
-          if (latestPayment.status === 'OVERDUE') {
-            Logger.info('AsaasSubscriptionService', 'Usuário possui pagamento vencido', { 
-              userId, 
-              subscriptionId: subscription.id,
-              paymentStatus: latestPayment.status 
-            })
-            return { canSelect: false, reason: 'Existe pagamento vencido' }
-          }
+        if (!allSubscriptions || allSubscriptions.length === 0) {
+          Logger.info('AsaasSubscriptionService', 'Usuário não possui nenhuma assinatura', { userId })
+          return { canSelect: false, reason: 'Nenhuma assinatura encontrada' }
+        } else {
+          Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas', { userId })
+          return { canSelect: false, reason: 'Nenhuma assinatura ativa encontrada' }
         }
       }
 
-      // Verificar limite de grupos por assinatura
+      // Verificar limite de grupos
       const { data: currentGroups, error: groupError } = await supabaseAdmin
         .from('group_selections')
         .select('id')
@@ -720,12 +689,7 @@ export class AsaasSubscriptionService {
       if (groupError) throw groupError
 
       const currentGroupCount = currentGroups?.length || 0
-      const maxGroups = activeSubscriptions.reduce((total, sub) => {
-        // Buscar o plano correspondente para obter max_groups
-        const plan = plans?.find(p => p.id === sub.plan_id)
-        const planMaxGroups = plan?.max_groups || 1
-        return total + planMaxGroups
-      }, 0)
+      const maxGroups = activeSubscriptions.length // 1 assinatura = 1 grupo
 
       if (currentGroupCount >= maxGroups) {
         Logger.info('AsaasSubscriptionService', 'Usuário atingiu limite de grupos', { 
@@ -733,22 +697,23 @@ export class AsaasSubscriptionService {
           currentCount: currentGroupCount, 
           maxAllowed: maxGroups 
         })
-        return { canSelect: false, reason: `Limite de ${maxGroups} grupos atingido` }
+        return { canSelect: false, reason: `Limite de ${maxGroups} grupo(s) atingido` }
       }
 
       Logger.info('AsaasSubscriptionService', 'Usuário pode selecionar novos grupos', { 
         userId, 
-        currentGroups: currentGroupCount, 
-        maxGroups 
+        currentCount: currentGroupCount, 
+        maxAllowed: maxGroups 
       })
-
       return { canSelect: true }
 
     } catch (error) {
-      Logger.error('AsaasSubscriptionService', 'Erro ao verificar se usuário pode selecionar grupos', { error, userId })
+      Logger.error('AsaasSubscriptionService', 'Erro ao verificar capacidade de seleção', { error, userId })
       return { canSelect: false, reason: 'Erro ao verificar permissões' }
     }
   }
+
+
 
   // Verificar se usuário pode selecionar um grupo específico
   static async canSelectSpecificGroup(userId: string, groupId: string): Promise<{ canSelect: boolean, reason?: string }> {
