@@ -57,7 +57,7 @@ export default function GroupManager() {
     // Calcular capacidade baseada no número de grupos selecionados
     const selectedGroupsCount = selectedGroups.length
     const maxGroups = 1 // Limite do plano atual (pode ser dinâmico no futuro)
-    
+
     if (selectedGroupsCount >= maxGroups) {
       setCanSelectNewGroups(false)
       setSelectionReason(`Limite de ${maxGroups} grupo(s) atingido`)
@@ -91,11 +91,11 @@ export default function GroupManager() {
       setFetchingGroups(true)
 
       const result = await GroupService.fetchAllGroups(instance.instance_name)
-      
+
       // Atualizar estado de capacidade de seleção
       setCanSelectNewGroups(result.canSelectNewGroups)
       setSelectionReason(result.reason)
-      
+
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
       const groupsWithStatus: GroupWithSelectionStatus[] = result.groups.map(group => ({
         ...group,
@@ -138,10 +138,10 @@ export default function GroupManager() {
       }
     } catch (error: any) {
       console.error('❌ Erro ao selecionar grupo:', error)
-      
+
       // Tratar erro específico de limite de grupos
       if (error?.error === 'Limite de 1 grupos atingido') {
-        alert('⚠️ Você atingiu o limite de grupos permitido pelo seu plano atual.\n\nPara selecionar mais grupos, faça upgrade do seu plano em "Assinaturas".')
+        alert('⚠️ Você atingiu o limite de grupos permitido pelo seu plano atual.\n\nPara selecionar mais grupos, adquira mais assinatura na página "Assinaturas".')
       } else if (error instanceof Error && error.message.includes('já foi selecionado')) {
         alert('Este grupo já foi selecionado anteriormente.')
       } else {
@@ -404,7 +404,7 @@ export default function GroupManager() {
                     ⚠️ {selectionReason || 'Você atingiu o limite de grupos do seu plano atual'}
                   </span>
                   <p className="text-xs text-yellow-600 mt-1">
-                    Para selecionar mais grupos, faça upgrade do seu plano
+                    Para selecionar mais grupos, adquira mais assinatura na "Assinaturas"
                   </p>
                 </div>
                 <Button
