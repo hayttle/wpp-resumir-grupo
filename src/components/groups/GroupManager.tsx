@@ -50,18 +50,22 @@ export default function GroupManager() {
   const [selectionReason, setSelectionReason] = useState<string>()
   const [hasUpdatedInstanceStatus, setHasUpdatedInstanceStatus] = useState(false)
 
-  // Função para recalcular a capacidade de seleção de grupos
-  const recalculateSelectionCapability = useCallback(async () => {
+  // Função para recalcular a capacidade de seleção de grupos baseada no estado local
+  const recalculateSelectionCapability = useCallback(() => {
     if (!user) return
 
-    try {
-      const result = await GroupService.fetchAllGroups(instance?.instance_name || '')
-      setCanSelectNewGroups(result.canSelectNewGroups)
-      setSelectionReason(result.reason)
-    } catch (error) {
-      console.error('❌ Erro ao recalcular capacidade de seleção:', error)
+    // Calcular capacidade baseada no número de grupos selecionados
+    const selectedGroupsCount = selectedGroups.length
+    const maxGroups = 1 // Limite do plano atual (pode ser dinâmico no futuro)
+    
+    if (selectedGroupsCount >= maxGroups) {
+      setCanSelectNewGroups(false)
+      setSelectionReason(`Limite de ${maxGroups} grupo(s) atingido`)
+    } else {
+      setCanSelectNewGroups(true)
+      setSelectionReason(undefined)
     }
-  }, [user, instance?.instance_name])
+  }, [user, selectedGroups.length])
 
   // Atualizar status da instância apenas uma vez no carregamento da página
   useEffect(() => {
@@ -71,6 +75,11 @@ export default function GroupManager() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [instance, user, hasUpdatedInstanceStatus])
+
+  // Recalcular capacidade de seleção sempre que o número de grupos selecionados mudar
+  useEffect(() => {
+    recalculateSelectionCapability()
+  }, [recalculateSelectionCapability])
 
   const fetchAllGroups = async () => {
     if (!instance?.instance_name) {
@@ -126,9 +135,6 @@ export default function GroupManager() {
         // Adicionar à lista de grupos selecionados
         setSelectedGroups(prev => [groupSelection, ...prev])
 
-        // Recalcular capacidade de seleção após adicionar grupo
-        await recalculateSelectionCapability()
-
       }
     } catch (error: any) {
       console.error('❌ Erro ao selecionar grupo:', error)
@@ -160,9 +166,6 @@ export default function GroupManager() {
             g.id === groupSelection.group_id ? { ...g, isSelected: false, canSelect: true } : g
           )
         )
-
-        // Recalcular capacidade de seleção após remover grupo
-        await recalculateSelectionCapability()
 
       } else {
         alert('Erro ao desselecionar grupo. Tente novamente.')
