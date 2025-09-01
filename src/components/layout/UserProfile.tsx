@@ -45,10 +45,6 @@ export default function UserProfile() {
     return user?.profile?.name || user?.email || 'Usuário'
   }
 
-  const getUserRole = () => {
-    return user?.profile?.role === 'admin' ? 'Administrador' : 'Usuário'
-  }
-
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Botão do perfil */}
@@ -70,9 +66,6 @@ export default function UserProfile() {
           <div className="text-sm font-medium text-gray-900">
             {getUserDisplayName()}
           </div>
-          <div className="text-xs text-gray-500">
-            {getUserRole()}
-          </div>
         </div>
 
         {/* Ícone de seta */}
@@ -92,9 +85,6 @@ export default function UserProfile() {
             </div>
             <div className="text-xs text-gray-500">
               {user?.email}
-            </div>
-            <div className="text-xs text-gray-400 mt-1">
-              {getUserRole()}
             </div>
           </div>
 

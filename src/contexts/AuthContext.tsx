@@ -23,7 +23,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   error: string | null
-  signUp: (email: string, password: string, userData: { name: string; phone_number?: string }) => Promise<{ error: any }>
+  signUp: (email: string, password: string, userData: { name: string; phone_number?: string; cpf_cnpj?: string; person_type: 'individual' | 'company' }) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
   logout: () => Promise<void>
@@ -180,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Cadastro
-  const signUp = async (email: string, password: string, userData: { name: string; phone_number?: string }) => {
+  const signUp = async (email: string, password: string, userData: { name: string; phone_number?: string; cpf_cnpj?: string; person_type: 'individual' | 'company' }) => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -188,7 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         options: {
           data: {
             name: userData.name,
-            phone_number: userData.phone_number
+            phone_number: userData.phone_number,
+            cpf_cnpj: userData.cpf_cnpj,
+            person_type: userData.person_type
           }
         }
       })

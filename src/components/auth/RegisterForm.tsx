@@ -7,11 +7,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
+import {
+  applyCPFCNPJMask,
+  isValidCPFOrCNPJ,
+  detectDocumentType,
+  onlyNumbers
+} from '@/lib/utils/cpf-cnpj-validator'
 
 export function RegisterForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
+  const [cpfCnpj, setCpfCnpj] = useState('')
+  const [personType, setPersonType] = useState<'individual' | 'company'>('individual')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,6 +28,20 @@ export function RegisterForm() {
 
   const { signUp } = useAuth()
   const router = useRouter()
+
+  // Manipular mudanças no campo CPF/CNPJ
+  const handleCpfCnpjChange = (value: string) => {
+    const formattedValue = applyCPFCNPJMask(value)
+    setCpfCnpj(formattedValue)
+
+    // Auto-detectar tipo de pessoa baseado no comprimento
+    const documentType = detectDocumentType(value)
+    if (documentType === 'cpf') {
+      setPersonType('individual')
+    } else if (documentType === 'cnpj') {
+      setPersonType('company')
+    }
+  }
 
   // Traduzir mensagens de erro do Supabase
   const translateError = (errorMessage: string): string => {
@@ -57,10 +79,18 @@ export function RegisterForm() {
       return
     }
 
+    if (cpfCnpj && !isValidCPFOrCNPJ(cpfCnpj)) {
+      setError('CPF ou CNPJ inválido')
+      setLoading(false)
+      return
+    }
+
     try {
       const { error } = await signUp(email, password, {
         name,
-        phone_number: phoneNumber || undefined
+        phone_number: phoneNumber || undefined,
+        cpf_cnpj: cpfCnpj ? onlyNumbers(cpfCnpj) : undefined,
+        person_type: personType
       })
 
       if (error) {
@@ -72,6 +102,8 @@ export function RegisterForm() {
         setName('')
         setEmail('')
         setPhoneNumber('')
+        setCpfCnpj('')
+        setPersonType('individual')
         setPassword('')
         setConfirmPassword('')
 
@@ -156,6 +188,26 @@ export function RegisterForm() {
                 placeholder="(11) 99999-9999"
                 className="border-whatsapp-background"
               />
+            </div>
+
+            <div>
+              <label htmlFor="cpf-cnpj" className="block text-sm font-medium text-whatsapp-text mb-2">
+                CPF ou CNPJ (opcional)
+              </label>
+              <Input
+                id="cpf-cnpj"
+                type="text"
+                value={cpfCnpj}
+                onChange={(e) => handleCpfCnpjChange(e.target.value)}
+                placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                maxLength={18}
+                className="border-whatsapp-background"
+              />
+              {cpfCnpj && (
+                <p className="text-xs text-whatsapp-text-secondary mt-1">
+                  Tipo: {personType === 'individual' ? 'Pessoa Física (CPF)' : 'Pessoa Jurídica (CNPJ)'}
+                </p>
+              )}
             </div>
 
             <div>

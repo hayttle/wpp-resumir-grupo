@@ -230,7 +230,6 @@ export default function AdminUsersManager() {
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{user.name || 'Sem nome'}</div>
-                          <div className="text-sm text-gray-500">ID: {user.id.slice(0, 8)}...</div>
                         </div>
                       </div>
                     </td>
@@ -295,7 +294,7 @@ export default function AdminUsersManager() {
             {filteredUsers.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Nenhum usuário encontrado para "{searchTerm}"</p>
+                <p>Nenhum usuário encontrado para &quot;{searchTerm}&quot;</p>
                 <p className="text-sm">Tente ajustar a busca</p>
               </div>
             )}

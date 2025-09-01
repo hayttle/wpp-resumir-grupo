@@ -5,7 +5,10 @@ export interface User {
   name: string
   email: string
   phone_number?: string
+  cpf_cnpj?: string
+  person_type: 'individual' | 'company'
   role: 'user' | 'admin'
+  asaas_customer_id?: string
   created_at: string
   updated_at?: string
 }
@@ -21,6 +24,20 @@ export interface Plan {
   updated_at?: string
 }
 
+export interface SubscriptionPlan {
+  id: string
+  name: string
+  description: string
+  price: number
+  billingType: 'MONTHLY' | 'YEARLY'
+  features: string[]
+  maxGroups: number
+  maxInstances: number
+  isActive: boolean
+  created_at: string
+  updated_at?: string
+}
+
 export interface Subscription {
   id: string
   user_id: string
@@ -29,8 +46,10 @@ export interface Subscription {
   start_date: string
   next_billing_date: string
   asaas_subscription_id?: string
+  group_id?: string // ID do grupo do WhatsApp vinculado a esta assinatura
   created_at: string
   updated_at?: string
+  subscription_plans?: SubscriptionPlan
 }
 
 export interface Instance {
@@ -103,6 +122,7 @@ export interface Summary {
 // Tipos para inserção (sem campos auto-gerados)
 export type UserInsert = Omit<User, 'id' | 'created_at' | 'updated_at'>
 export type PlanInsert = Omit<Plan, 'id' | 'created_at' | 'updated_at'>
+export type SubscriptionPlanInsert = Omit<SubscriptionPlan, 'id' | 'created_at' | 'updated_at'>
 export type SubscriptionInsert = Omit<Subscription, 'id' | 'created_at' | 'updated_at'>
 export type InstanceInsert = Omit<Instance, 'id' | 'created_at' | 'updated_at'>
 // Tipo para inserção de seleção de grupo
@@ -114,6 +134,7 @@ export type SummaryInsert = Omit<Summary, 'id' | 'created_at'>
 // Tipos para atualização (campos opcionais)
 export type UserUpdate = Partial<Omit<User, 'id' | 'created_at'>>
 export type PlanUpdate = Partial<Omit<Plan, 'id' | 'created_at'>>
+export type SubscriptionPlanUpdate = Partial<Omit<SubscriptionPlan, 'id' | 'created_at'>>
 export type SubscriptionUpdate = Partial<Omit<Subscription, 'id' | 'created_at'>>
 export type InstanceUpdate = Partial<Omit<Instance, 'id' | 'created_at'>>
 // Tipo para atualização de seleção de grupo
