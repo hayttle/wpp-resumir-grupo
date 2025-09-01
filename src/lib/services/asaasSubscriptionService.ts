@@ -635,6 +635,19 @@ export class AsaasSubscriptionService {
     try {
       Logger.info('AsaasSubscriptionService', 'Verificando se usuário pode selecionar novos grupos', { userId })
 
+      // Buscar todas as assinaturas do usuário para debug
+      const { data: allSubscriptions, error: allSubError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('id, status, plan_id')
+        .eq('user_id', userId)
+
+      if (allSubError) throw allSubError
+
+      Logger.info('AsaasSubscriptionService', 'Todas as assinaturas do usuário', { 
+        userId, 
+        allSubscriptions: allSubscriptions?.map(s => ({ id: s.id, status: s.status, plan_id: s.plan_id }))
+      })
+
       // Buscar assinaturas ativas do usuário
       const { data: activeSubscriptions, error: subError } = await supabaseAdmin
         .from('subscriptions')
@@ -645,7 +658,11 @@ export class AsaasSubscriptionService {
       if (subError) throw subError
 
       if (!activeSubscriptions || activeSubscriptions.length === 0) {
-        Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas', { userId })
+        Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas', { 
+          userId, 
+          totalSubscriptions: allSubscriptions?.length || 0,
+          subscriptionStatuses: allSubscriptions?.map(s => s.status) || []
+        })
         return { canSelect: false, reason: 'Nenhuma assinatura ativa encontrada' }
       }
 
