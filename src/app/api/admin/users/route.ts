@@ -156,7 +156,54 @@ export async function DELETE(request: NextRequest) {
       console.error('Erro ao deletar assinaturas:', subscriptionsError)
     }
 
-    // 7. Deletar instâncias do usuário
+    // 7. Buscar instâncias do usuário para deletar na Evolution API
+    const { data: userInstances, error: fetchInstancesError } = await supabaseAdmin
+      .from('instances')
+      .select('instance_name, evolution_instance_id')
+      .eq('user_id', userId)
+
+    if (fetchInstancesError) {
+      console.error('Erro ao buscar instâncias do usuário:', fetchInstancesError)
+    }
+
+    // 8. Deletar instâncias na Evolution API
+    if (userInstances && userInstances.length > 0) {
+      const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
+      const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
+
+      if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+        console.error('❌ Variáveis de ambiente da Evolution API não configuradas')
+      } else {
+        for (const instance of userInstances) {
+          try {
+            console.log(`🗑️ Deletando instância ${instance.instance_name} na Evolution API...`)
+            
+            const evolutionResponse = await fetch(
+              `${EVOLUTION_API_URL}/instance/delete/${instance.instance_name}`,
+              {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': EVOLUTION_API_KEY
+                }
+              }
+            )
+
+            if (!evolutionResponse.ok) {
+              const errorData = await evolutionResponse.json()
+              console.error(`❌ Erro ao deletar instância ${instance.instance_name} na Evolution API:`, errorData)
+            } else {
+              const deleteData = await evolutionResponse.json()
+              console.log(`✅ Evolution API: Instância ${instance.instance_name} deletada:`, deleteData)
+            }
+          } catch (error) {
+            console.error(`❌ Erro ao deletar instância ${instance.instance_name} na Evolution API:`, error)
+          }
+        }
+      }
+    }
+
+    // 9. Deletar instâncias do usuário do banco de dados
     const { error: instancesError } = await supabaseAdmin
       .from('instances')
       .delete()
@@ -166,21 +213,32 @@ export async function DELETE(request: NextRequest) {
       console.error('Erro ao deletar instâncias:', instancesError)
     }
 
-    // 8. Por último, deletar o usuário
+    // 10. Deletar do sistema de autenticação do Supabase
+    const { error: deleteAuthError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+
+    if (deleteAuthError) {
+      console.error('Erro ao deletar usuário do auth:', deleteAuthError)
+      return NextResponse.json(
+        { error: 'Erro ao deletar usuário do sistema de autenticação' }, 
+        { status: 500 }
+      )
+    }
+
+    // 11. Por último, deletar da tabela users
     const { error: deleteUserError } = await supabaseAdmin
       .from('users')
       .delete()
       .eq('id', userId)
 
     if (deleteUserError) {
-      console.error('Erro ao deletar usuário:', deleteUserError)
+      console.error('Erro ao deletar usuário da tabela:', deleteUserError)
       return NextResponse.json(
-        { error: 'Erro ao deletar usuário' }, 
+        { error: 'Erro ao deletar usuário da tabela' }, 
         { status: 500 }
       )
     }
 
-    console.log(`Usuário ${userId} (${user.name}) removido com sucesso com todos os dados relacionados`)
+    console.log(`Usuário ${userId} (${user.name}) removido com sucesso do auth e banco de dados, incluindo todos os dados relacionados`)
 
     return NextResponse.json({ 
       message: 'Usuário e todos os dados relacionados foram removidos com sucesso',

@@ -33,11 +33,19 @@ export default function DashboardPage() {
 
       // Buscar estatísticas do dashboard
       const dashboardStats = await DashboardService.getUserDashboardStats(user.id)
-      setStats(dashboardStats)
+      setStats(dashboardStats || {
+        totalGroups: 0,
+        activeGroups: 0,
+        totalSummaries: 0,
+        summariesThisMonth: 0,
+        instanceStatus: null,
+        instanceName: null,
+        lastSummaryDate: null
+      })
 
       // Buscar atividade recente
       const activity = await DashboardService.getUserRecentActivity(user.id, 5)
-      setRecentActivity(activity)
+      setRecentActivity(activity || [])
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error)
       // Em caso de erro, definir dados padrão

@@ -213,14 +213,24 @@ export async function PUT(request: NextRequest) {
     }
 
     // 4. Buscar instância do usuário
-    const { data: instance, error: instanceError } = await supabase
+    const { data: instances, error: instanceError } = await supabase
       .from('instances')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .limit(1)
 
-    if (instanceError || !instance) {
+    if (instanceError) {
       console.error('❌ Erro ao buscar instância:', instanceError)
+      return NextResponse.json(
+        { error: 'Erro ao acessar banco de dados' },
+        { status: 500 }
+      )
+    }
+
+    const instance = instances && instances.length > 0 ? instances[0] : null
+
+    if (!instance) {
+      console.error('❌ Instância não encontrada para o usuário:', user.id)
       return NextResponse.json(
         { error: 'Instância não encontrada' },
         { status: 404 }
@@ -564,13 +574,13 @@ export async function GET(request: NextRequest) {
     console.log('✅ API Route GET: Usuário autenticado:', user.id)
 
     // 2. Buscar instância do usuário
-    const { data: instance, error } = await supabase
+    const { data: instances, error } = await supabase
       .from('instances')
       .select('*')
       .eq('user_id', user.id)
-      .single()
+      .limit(1)
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+    if (error) {
       console.error('❌ Erro ao buscar instância:', error)
       return NextResponse.json(
         { error: 'Erro ao buscar instância' },
@@ -578,9 +588,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const instance = instances && instances.length > 0 ? instances[0] : null
+
     return NextResponse.json({
       success: true,
-      instance: instance || null
+      instance: instance
     })
 
   } catch (error) {

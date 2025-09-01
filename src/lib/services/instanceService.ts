@@ -158,8 +158,6 @@ export class InstanceService {
   // Atualizar status da instância via Evolution API
   static async updateInstanceStatus(): Promise<Instance | null> {
     try {
-
-      
       const response = await fetch('/api/instances', {
         method: 'PUT',
         headers: {
@@ -172,15 +170,27 @@ export class InstanceService {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // Se é 404 (instância não encontrada), retornar null sem erro
+        if (response.status === 404) {
+          console.log('ℹ️ Nenhuma instância encontrada para atualizar status')
+          return null
+        }
+        
+        // Para outros erros, lançar exceção
         console.error('❌ Erro ao atualizar status:', errorData)
         throw new Error(errorData.error || 'Falha ao atualizar status')
       }
 
       const result = await response.json()
-
-      
       return result.instance
     } catch (error) {
+      // Se o erro for "instância não encontrada", retornar null
+      if (error instanceof Error && error.message.includes('Instância não encontrada')) {
+        console.log('ℹ️ Instância não encontrada - usuário ainda não criou uma instância')
+        return null
+      }
+      
       console.error('❌ InstanceService: Erro ao atualizar status:', error)
       throw error
     }

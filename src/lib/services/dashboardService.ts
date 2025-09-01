@@ -26,17 +26,18 @@ export class DashboardService {
       }
 
       // Buscar instância do usuário
-      const { data: instance, error: instanceError } = await supabase
+      const { data: instances, error: instanceError } = await supabase
         .from('instances')
         .select('status, instance_name')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
 
-      if (instanceError && instanceError.code !== 'PGRST116') {
+      if (instanceError) {
         console.error('Erro ao buscar instância:', instanceError)
       }
+
+      const instance = instances && instances.length > 0 ? instances[0] : null
 
       // Calcular estatísticas básicas
       const totalGroups = groups?.length || 0
@@ -166,16 +167,20 @@ export class DashboardService {
   // Buscar status da instância em tempo real
   static async getInstanceStatus(userId: string) {
     try {
-      const { data: instance, error } = await supabase
+      const { data: instances, error } = await supabase
         .from('instances')
         .select('status, instance_name, updated_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single()
 
       if (error) {
         console.error('Erro ao buscar status da instância:', error)
+        return null
+      }
+
+      const instance = instances && instances.length > 0 ? instances[0] : null
+      if (!instance) {
         return null
       }
 

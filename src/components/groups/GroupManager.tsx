@@ -29,11 +29,17 @@ export default function GroupManager() {
   useEffect(() => {
     if (user) {
       loadUserGroupSelections()
-      // Atualizar status da instância automaticamente ao entrar na página
-      updateInstanceStatus()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
+
+  // Atualizar status da instância apenas se existe uma instância
+  useEffect(() => {
+    if (instance && user) {
+      updateInstanceStatus()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instance, user])
 
   const loadUserGroupSelections = useCallback(async () => {
     try {
