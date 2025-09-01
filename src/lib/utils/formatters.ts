@@ -138,10 +138,69 @@ export const formatDateTime = (dateString: string): string => {
  * @returns Valor formatado no padrão brasileiro
  */
 export const formatCurrency = (value: number, currency: string = 'BRL'): string => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency
-  }).format(value)
+  try {
+    // Garantir que o valor seja tratado como número
+    const numericValue = Number(value)
+    
+    if (isNaN(numericValue)) {
+      return 'R$ 0,00'
+    }
+    
+    // Tentar usar Intl.NumberFormat primeiro
+    try {
+      const formatter = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })
+      
+      const formatted = formatter.format(numericValue)
+      
+      // Verificar se a formatação está correta (deve ter vírgula)
+      if (formatted.includes(',')) {
+        return formatted
+      }
+    } catch (intlError) {
+      console.warn('Intl.NumberFormat falhou, usando fallback manual:', intlError)
+    }
+    
+    // Fallback manual para garantir formato brasileiro
+    console.warn('Usando fallback manual para formatação de moeda')
+    const formattedValue = numericValue.toFixed(2)
+    const [integerPart, decimalPart] = formattedValue.split('.')
+    
+    // Adicionar separadores de milhares
+    const integerWithSeparators = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    
+    return `R$ ${integerWithSeparators},${decimalPart}`
+    
+  } catch (error) {
+    console.warn('Erro ao formatar moeda:', value, error)
+    // Fallback final para garantir formato brasileiro
+    const numericValue = Number(value) || 0
+    const formattedValue = numericValue.toFixed(2)
+    const [integerPart, decimalPart] = formattedValue.split('.')
+    return `R$ ${integerPart},${decimalPart}`
+  }
+}
+
+/**
+ * Função de teste para verificar formatação da moeda
+ * @param value - Valor para testar
+ * @returns Informações sobre a formatação
+ */
+export const testCurrencyFormatting = (value: number) => {
+  const result = {
+    input: value,
+    inputType: typeof value,
+    formatted: formatCurrency(value),
+    locale: Intl.NumberFormat().resolvedOptions().locale,
+    numberFormat: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  }
+  
+  console.log('Teste de formatação de moeda:', result)
+  return result
 }
 
 /**

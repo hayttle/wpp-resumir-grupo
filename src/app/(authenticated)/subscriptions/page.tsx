@@ -142,6 +142,15 @@ export default function SubscriptionsPage() {
         fetchPayments()
       ])
       setLoading(false)
+      
+      // Teste de formatação de moeda
+      if (plans.length > 0) {
+        console.log('🧪 Teste de formatação de moeda:', {
+          planPrice: plans[0].price,
+          planPriceType: typeof plans[0].price,
+          formatted: formatCurrency(plans[0].price)
+        })
+      }
     }
 
     loadData()
@@ -320,7 +329,7 @@ export default function SubscriptionsPage() {
                   </CardDescription>
                   <div className="mt-4">
                     <span className="text-4xl font-bold text-whatsapp-primary">
-                      R$ {plan.price.toFixed(2)}
+                      {formatCurrency(plan.price)}
                     </span>
                     <span className="text-whatsapp-text-secondary ml-2">
                       /mês
@@ -382,7 +391,7 @@ export default function SubscriptionsPage() {
                       <div className="flex justify-between">
                         <span className="text-sm text-whatsapp-text-secondary">Valor:</span>
                         <span className="text-sm font-medium text-whatsapp-text">
-                          R$ {subscription.value.toFixed(2)}
+                          {formatCurrency(subscription.value)}
                         </span>
                       </div>
 
@@ -461,7 +470,7 @@ export default function SubscriptionsPage() {
                                         {formatDate(payment.due_date)}
                                       </td>
                                       <td className="px-2 py-2 font-medium text-whatsapp-text">
-                                        R$ {payment.value.toFixed(2)}
+                                        {formatCurrency(payment.value)}
                                       </td>
                                       <td className="px-2 py-2">
                                         <StatusBadge status={payment.status} variant="payment" />
@@ -471,8 +480,8 @@ export default function SubscriptionsPage() {
                                       </td>
                                       <td className="px-2 py-2">
                                         <div className="flex space-x-1">
-                                          {/* Botão PAGAR para pagamentos pendentes */}
-                                          {payment.invoice_url && payment.status === 'PENDING' && (
+                                          {/* Botão PAGAR para pagamentos pendentes apenas em assinaturas ativas */}
+                                          {payment.invoice_url && payment.status === 'PENDING' && subscription.status === 'active' && (
                                             <button
                                               onClick={() => window.open(payment.invoice_url, '_blank')}
                                               className="text-xs bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700"

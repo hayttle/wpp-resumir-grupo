@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/toast'
+import { formatCurrency } from '@/lib/utils/formatters'
 
 interface SubscribeButtonProps {
   planId: string
@@ -83,7 +84,7 @@ export function SubscribeButton({ planId, planName, planPrice, className }: Subs
       disabled={loading}
       className={className}
     >
-      {loading ? 'Criando assinatura...' : `Assinar ${planName} - R$ ${planPrice.toFixed(2)}`}
+      {loading ? 'Criando assinatura...' : `Assinar ${planName} - ${formatCurrency(planPrice)}`}
     </Button>
   )
 }

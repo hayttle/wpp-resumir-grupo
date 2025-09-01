@@ -52,27 +52,47 @@ export async function POST(request: NextRequest) {
       status: 'starting'
     })
 
-    await AsaasSubscriptionService.processWebhook(webhookData.event, webhookData)
+    try {
+      await AsaasSubscriptionService.processWebhook(webhookData.event, webhookData)
+      
+      console.log('✅ [WEBHOOK SUCCESS]', {
+        timestamp,
+        event: webhookData.event,
+        status: 'completed'
+      })
 
-    console.log('✅ [WEBHOOK SUCCESS]', {
-      timestamp,
-      event: webhookData.event,
-      status: 'completed'
-    })
+      // Retornar resposta de sucesso para o Asaas
+      return NextResponse.json({ 
+        message: 'Webhook processado com sucesso',
+        event: webhookData.event,
+        timestamp
+      }, { status: 200 })
 
-    return NextResponse.json({ 
-      message: 'Webhook processado com sucesso',
-      event: webhookData.event,
-      timestamp
-    }, { status: 200 })
+    } catch (processingError) {
+      console.error('💥 [WEBHOOK PROCESSING ERROR]', {
+        timestamp,
+        event: webhookData.event,
+        error: processingError instanceof Error ? processingError.message : processingError,
+        stack: processingError instanceof Error ? processingError.stack : undefined
+      })
+      
+      // Mesmo com erro no processamento, retornar 200 para o Asaas não reenviar
+      // O erro foi logado para investigação
+      return NextResponse.json({ 
+        message: 'Webhook recebido (erro no processamento foi logado)',
+        event: webhookData.event,
+        timestamp
+      }, { status: 200 })
+    }
 
   } catch (error) {
-    console.error('💥 [WEBHOOK ERROR]', {
+    console.error('💥 [WEBHOOK FATAL ERROR]', {
       timestamp,
       error: error instanceof Error ? error.message : error,
       stack: error instanceof Error ? error.stack : undefined
     })
     
+    // Em caso de erro fatal (parse, etc), retornar 500
     return NextResponse.json({ 
       error: 'Erro interno do servidor',
       message: error instanceof Error ? error.message : 'Erro desconhecido',

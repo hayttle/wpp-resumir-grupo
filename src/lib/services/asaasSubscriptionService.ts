@@ -90,10 +90,10 @@ export class AsaasSubscriptionService {
       // Atualizar status para INACTIVE no Asaas
       await AsaasService.updateSubscription(subscription.asaas_subscription_id, { status: 'INACTIVE' })
 
-      // Atualizar status local para cancelled
+      // Atualizar status local para inactive (consistente com o webhook)
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
-        .update({ status: 'cancelled' })
+        .update({ status: 'inactive' })
         .eq('id', subscriptionId)
 
       if (updateError) throw updateError
@@ -480,23 +480,75 @@ export class AsaasSubscriptionService {
 
       const subscription = data.subscription
 
+      // Log detalhado para debug
+      Logger.info('AsaasSubscriptionService', 'Dados da assinatura recebidos', {
+        subscriptionId: subscription.id,
+        status: subscription.status,
+        statusConverted: subscription.status.toLowerCase(),
+        nextDueDate: subscription.nextDueDate,
+        nextDueDateConverted: convertAsaasDateToUTC(subscription.nextDueDate),
+        // Log adicional para debug do status
+        statusType: typeof subscription.status,
+        statusLength: subscription.status?.length,
+        statusLowerCase: subscription.status?.toLowerCase(),
+        // Log adicional para debug da data
+        nextDueDateType: typeof subscription.nextDueDate,
+        nextDueDateLength: subscription.nextDueDate?.length,
+        nextDueDateConvertedType: typeof convertAsaasDateToUTC(subscription.nextDueDate)
+      })
+
+      // Verificar se a assinatura existe antes de atualizar
+      const { data: existingSubscription, error: checkError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('id, status')
+        .eq('asaas_subscription_id', subscription.id)
+        .single()
+
+      if (checkError) {
+        Logger.error('AsaasSubscriptionService', 'Erro ao verificar assinatura existente', { 
+          error: checkError, 
+          asaasSubscriptionId: subscription.id 
+        })
+        throw new Error(`Assinatura não encontrada para asaas_subscription_id: ${subscription.id}`)
+      }
+
+      Logger.info('AsaasSubscriptionService', 'Assinatura encontrada no banco', {
+        subscriptionId: existingSubscription.id,
+        currentStatus: existingSubscription.status,
+        newStatus: subscription.status.toLowerCase()
+      })
+
       // Atualizar assinatura
+      const updateData = {
+        status: subscription.status.toLowerCase(),
+        next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
+        value: subscription.value,
+        billing_type: subscription.billingType,
+        cycle: subscription.cycle,
+        description: subscription.description,
+        payment_link: subscription.paymentLink
+      }
+
+      Logger.info('AsaasSubscriptionService', 'Dados para atualização', { updateData })
+
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
-        .update({
-          status: subscription.status.toLowerCase(),
-          next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
-          value: subscription.value,
-          billing_type: subscription.billingType,
-          cycle: subscription.cycle,
-          description: subscription.description,
-          payment_link: subscription.paymentLink
-        })
+        .update(updateData)
         .eq('asaas_subscription_id', subscription.id)
 
-      if (updateError) throw updateError
+      if (updateError) {
+        Logger.error('AsaasSubscriptionService', 'Erro ao atualizar assinatura no banco', { 
+          error: updateError, 
+          subscriptionId: subscription.id,
+          updateData
+        })
+        throw updateError
+      }
 
-      Logger.info('AsaasSubscriptionService', 'Assinatura atualizada', { subscriptionId: subscription.id })
+      Logger.info('AsaasSubscriptionService', 'Assinatura atualizada com sucesso', { 
+        subscriptionId: subscription.id,
+        newStatus: subscription.status.toLowerCase()
+      })
 
     } catch (error) {
       Logger.error('AsaasSubscriptionService', 'Erro ao processar SUBSCRIPTION_UPDATED', { error, data })

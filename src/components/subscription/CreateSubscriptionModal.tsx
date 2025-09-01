@@ -15,6 +15,7 @@ import {
   ExternalLink
 } from 'lucide-react'
 import type { Plan } from '@/types/database'
+import { formatCurrency } from '@/lib/utils/formatters'
 
 interface CreateSubscriptionModalProps {
   isOpen: boolean
@@ -45,10 +46,10 @@ export default function CreateSubscriptionModal({
   })
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(price)
+    console.log('Formatando preço:', { price, type: typeof price })
+    const formatted = formatCurrency(price)
+    console.log('Preço formatado:', formatted)
+    return formatted
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
