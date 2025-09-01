@@ -115,9 +115,13 @@ export default function GroupManager() {
 
 
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Erro ao selecionar grupo:', error)
-      if (error instanceof Error && error.message.includes('já foi selecionado')) {
+      
+      // Tratar erro específico de limite de grupos
+      if (error?.error === 'Limite de 1 grupos atingido') {
+        alert('⚠️ Você atingiu o limite de grupos permitido pelo seu plano atual.\n\nPara selecionar mais grupos, faça upgrade do seu plano em "Assinaturas".')
+      } else if (error instanceof Error && error.message.includes('já foi selecionado')) {
         alert('Este grupo já foi selecionado anteriormente.')
       } else {
         alert('Erro ao selecionar grupo. Tente novamente.')
@@ -375,14 +379,19 @@ export default function GroupManager() {
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
               <div className="flex items-center gap-2 text-yellow-700">
                 <AlertCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">
-                  ⚠️ {selectionReason || 'Você não pode selecionar novos grupos no momento'}
-                </span>
+                <div className="flex-1">
+                  <span className="text-sm font-medium">
+                    ⚠️ {selectionReason || 'Você atingiu o limite de grupos do seu plano atual'}
+                  </span>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    Para selecionar mais grupos, faça upgrade do seu plano
+                  </p>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => window.location.href = '/subscriptions'}
-                  className="ml-auto"
+                  className="ml-2"
                 >
                   Ver Assinaturas
                 </Button>
@@ -454,9 +463,14 @@ export default function GroupManager() {
                           Selecionar
                         </Button>
                       ) : (
-                        <Badge variant="secondary" className="bg-gray-100 text-gray-500">
-                          Não Disponível
-                        </Badge>
+                        <div className="text-center">
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-500">
+                            Limite Atingido
+                          </Badge>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Upgrade necessário
+                          </p>
+                        </div>
                       )
                     ) : (
                       <Badge variant="secondary" className="bg-gray-100">
