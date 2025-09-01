@@ -14,6 +14,7 @@ import { formatDateTime } from '@/lib/utils/formatters'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
+  canSelect: boolean
 }
 
 export default function GroupManager() {
@@ -53,6 +54,9 @@ export default function GroupManager() {
     }
   }, [])
 
+  const [canSelectNewGroups, setCanSelectNewGroups] = useState(true)
+  const [selectionReason, setSelectionReason] = useState<string>()
+
   const fetchAllGroups = async () => {
     if (!instance?.instance_name) {
       alert('Instância não encontrada')
@@ -62,9 +66,14 @@ export default function GroupManager() {
     try {
       setFetchingGroups(true)
 
-      const fetchedGroups = await GroupService.fetchAllGroups(instance.instance_name)
+      const result = await GroupService.fetchAllGroups(instance.instance_name)
+      
+      // Atualizar estado de capacidade de seleção
+      setCanSelectNewGroups(result.canSelectNewGroups)
+      setSelectionReason(result.reason)
+      
       // Converter para GroupWithSelectionStatus e marcar grupos já selecionados
-      const groupsWithStatus: GroupWithSelectionStatus[] = fetchedGroups.map(group => ({
+      const groupsWithStatus: GroupWithSelectionStatus[] = result.groups.map(group => ({
         ...group,
         isSelected: selectedGroups.some(selection => selection.group_id === group.id)
       }))
@@ -358,6 +367,26 @@ export default function GroupManager() {
               </span>
             </div>
           </div>
+
+          {/* Mensagem de validação de assinatura */}
+          {!canSelectNewGroups && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
+              <div className="flex items-center gap-2 text-yellow-700">
+                <AlertCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">
+                  ⚠️ {selectionReason || 'Você não pode selecionar novos grupos no momento'}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.location.href = '/subscriptions'}
+                  className="ml-auto"
+                >
+                  Ver Assinaturas
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -412,15 +441,21 @@ export default function GroupManager() {
                   </div>
                   <div className="ml-4">
                     {!group.isSelected ? (
-                      <Button
-                        onClick={() => selectGroup(group)}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Selecionar
-                      </Button>
+                      group.canSelect && canSelectNewGroups ? (
+                        <Button
+                          onClick={() => selectGroup(group)}
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Selecionar
+                        </Button>
+                      ) : (
+                        <Badge variant="secondary" className="bg-gray-100 text-gray-500">
+                          Não Disponível
+                        </Badge>
+                      )
                     ) : (
                       <Badge variant="secondary" className="bg-gray-100">
                         Já Selecionado

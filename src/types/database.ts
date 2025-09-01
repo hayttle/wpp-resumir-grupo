@@ -52,11 +52,8 @@ export interface Subscription {
   value?: number
   cycle?: 'MONTHLY' | 'YEARLY'
   description?: string
-  payment_link?: string // Link de pagamento do Asaas
-  fine_value?: number
-  fine_type?: 'FIXED' | 'PERCENTAGE'
-  interest_value?: number
-  interest_type?: 'PERCENTAGE'
+
+
   created_at: string
   updated_at?: string
   subscription_plans?: SubscriptionPlan

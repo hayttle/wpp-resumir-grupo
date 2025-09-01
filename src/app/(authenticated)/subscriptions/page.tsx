@@ -142,7 +142,7 @@ export default function SubscriptionsPage() {
         fetchPayments()
       ])
       setLoading(false)
-      
+
       // Teste de formatação de moeda
       if (plans.length > 0) {
         console.log('🧪 Teste de formatação de moeda:', {

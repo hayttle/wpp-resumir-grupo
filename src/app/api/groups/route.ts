@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionService'
 
 // Configuração server-side (segura)
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
@@ -181,20 +182,26 @@ async function fetchAllGroups(instanceName: string, supabase: any, userId: strin
     const groups = await groupsResponse.json()
     console.log('✅ Evolution API: Grupos obtidos:', groups)
 
+    // Verificar se o usuário pode selecionar novos grupos
+    const canSelectNewGroups = await AsaasSubscriptionService.canSelectNewGroups(userId)
+    
     // Para cada grupo, verificar se já foi selecionado pelo usuário
     const groupsWithSelectionStatus = await Promise.all(
       groups.map(async (group: any) => {
         const isSelected = await checkIfGroupIsSelected(group.id, userId, supabase)
         return {
           ...group,
-          isSelected
+          isSelected,
+          canSelect: canSelectNewGroups.canSelect && !isSelected
         }
       })
     )
 
     return NextResponse.json({
       success: true,
-      groups: groupsWithSelectionStatus
+      groups: groupsWithSelectionStatus,
+      canSelectNewGroups: canSelectNewGroups.canSelect,
+      reason: canSelectNewGroups.reason
     })
 
   } catch (error) {
@@ -211,7 +218,18 @@ async function saveGroupSelection(groupSelection: any, instanceId: string, userI
   try {
     console.log('💾 Salvando seleção de grupo:', groupSelection)
     
-    // Verificar se o grupo já foi selecionado
+    // Verificar se o usuário pode selecionar este grupo
+    const canSelect = await AsaasSubscriptionService.canSelectSpecificGroup(userId, groupSelection.group_id)
+    
+    if (!canSelect.canSelect) {
+      console.log('❌ Usuário não pode selecionar grupo:', canSelect.reason)
+      return NextResponse.json(
+        { error: canSelect.reason || 'Não é possível selecionar este grupo' },
+        { status: 403 }
+      )
+    }
+    
+    // Verificar se o grupo já foi selecionado (dupla verificação)
     const { data: existingSelection } = await supabase
       .from('group_selections')
       .select('id')

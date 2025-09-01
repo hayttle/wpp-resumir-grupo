@@ -1,9 +1,20 @@
 import { supabase } from '../supabase'
 import { WhatsAppGroup, GroupSelection, GroupSelectionInsert, GroupSelectionUpdate } from '@/types/database'
 
+interface GroupWithSelectionStatus extends WhatsAppGroup {
+  isSelected: boolean
+  canSelect: boolean
+}
+
+interface FetchGroupsResult {
+  groups: GroupWithSelectionStatus[]
+  canSelectNewGroups: boolean
+  reason?: string
+}
+
 export class GroupService {
   // Buscar todos os grupos da instância conectada
-  static async fetchAllGroups(instanceName: string): Promise<WhatsAppGroup[]> {
+  static async fetchAllGroups(instanceName: string): Promise<FetchGroupsResult> {
     try {
 
       
@@ -27,7 +38,11 @@ export class GroupService {
       const result = await response.json()
 
       
-      return result.groups || []
+      return {
+        groups: result.groups || [],
+        canSelectNewGroups: result.canSelectNewGroups || false,
+        reason: result.reason
+      }
     } catch (error) {
       console.error('❌ GroupService: Erro ao buscar grupos:', error)
       throw error
