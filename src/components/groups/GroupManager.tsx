@@ -404,7 +404,7 @@ export default function GroupManager() {
                     ⚠️ {selectionReason || 'Você atingiu o limite de grupos do seu plano atual'}
                   </span>
                   <p className="text-xs text-yellow-600 mt-1">
-                    Para selecionar mais grupos, adquira mais assinatura na "Assinaturas"
+                    Para selecionar mais grupos, adquira mais assinatura na página "Assinaturas"
                   </p>
                 </div>
                 <Button
