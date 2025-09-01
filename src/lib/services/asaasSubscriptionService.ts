@@ -648,22 +648,32 @@ export class AsaasSubscriptionService {
         allSubscriptions: allSubscriptions?.map(s => ({ id: s.id, status: s.status, plan_id: s.plan_id }))
       })
 
-      // Buscar assinaturas ativas do usuário
+      // Buscar assinaturas ativas ou com pagamento vencido (overdue)
       const { data: activeSubscriptions, error: subError } = await supabaseAdmin
         .from('subscriptions')
         .select('id, status, plan_id')
         .eq('user_id', userId)
-        .eq('status', 'active')
+        .in('status', ['active', 'overdue'])
 
       if (subError) throw subError
 
       if (!activeSubscriptions || activeSubscriptions.length === 0) {
-        Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas', { 
+        Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas ou com pagamento vencido', { 
           userId, 
           totalSubscriptions: allSubscriptions?.length || 0,
           subscriptionStatuses: allSubscriptions?.map(s => s.status) || []
         })
         return { canSelect: false, reason: 'Nenhuma assinatura ativa encontrada' }
+      }
+
+      // Verificar se há assinaturas com status 'overdue' (pagamento vencido)
+      const overdueSubscriptions = activeSubscriptions.filter(sub => sub.status === 'overdue')
+      if (overdueSubscriptions.length > 0) {
+        Logger.info('AsaasSubscriptionService', 'Usuário possui assinaturas com pagamento vencido', { 
+          userId, 
+          overdueSubscriptions: overdueSubscriptions.map(s => ({ id: s.id, status: s.status }))
+        })
+        return { canSelect: false, reason: 'Existe pagamento vencido' }
       }
 
       // Buscar os planos das assinaturas para obter max_groups
