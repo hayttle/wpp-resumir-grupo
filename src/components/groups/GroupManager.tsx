@@ -81,20 +81,32 @@ export default function GroupManager() {
     recalculateSelectionCapability()
   }, [recalculateSelectionCapability])
 
-  // Checagem inicial de capacidade de acesso aos grupos
+  // Checagem inicial de capacidade de acesso aos grupos (sem depender da Evolution API)
   useEffect(() => {
     const checkInitialAccess = async () => {
-      if (!user || !instance?.instance_name) return
+      if (!user) return
 
       try {
-        // Fazer uma checagem inicial para ver se pode acessar grupos
-        const result = await GroupService.fetchAllGroups(instance.instance_name)
+        // Fazer uma checagem simples apenas das permissões de assinatura
+        const response = await fetch('/api/groups', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'checkPermissions'
+          })
+        })
 
-        console.log('🔍 Checagem inicial completa:', result)
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const result = await response.json()
+        console.log('🔍 Checagem inicial de permissões:', result)
 
         if (!result.canSelectNewGroups) {
           console.log('⚠️ Checagem inicial: Usuário não pode acessar grupos:', result.reason)
-          console.log('🔍 Debug - canSelectNewGroups:', result.canSelectNewGroups, 'reason:', result.reason)
           setCanSelectNewGroups(false)
           setSelectionReason(result.reason)
 
@@ -107,16 +119,13 @@ export default function GroupManager() {
         }
       } catch (error) {
         console.error('❌ Erro na checagem inicial de acesso:', error)
-        
-        // Em caso de erro na API, assumir que não pode acessar grupos por segurança
-        console.log('🔒 Erro na API - assumindo que não pode acessar grupos por segurança')
-        setCanSelectNewGroups(false)
-        setSelectionReason('Erro ao verificar permissões de acesso')
+        // Em caso de erro, manter o estado padrão (pode acessar)
+        console.log('🔒 Erro na checagem - mantendo estado padrão')
       }
     }
 
     checkInitialAccess()
-  }, [user, instance?.instance_name])
+  }, [user])
 
   const fetchAllGroups = async () => {
     if (!instance?.instance_name) {
@@ -444,7 +453,6 @@ export default function GroupManager() {
           </div>
 
           {/* Mensagem de validação de assinatura */}
-          {console.log('🔍 Debug Banner - canSelectNewGroups:', canSelectNewGroups, 'selectionReason:', selectionReason)}
           {!canSelectNewGroups && (
             <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg mt-3">
               <div className="flex items-center gap-2 text-yellow-700">

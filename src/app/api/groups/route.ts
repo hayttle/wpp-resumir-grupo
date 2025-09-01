@@ -79,6 +79,8 @@ export async function POST(request: NextRequest) {
       return await saveGroupSelection(groupSelection, instance.id, user.id, supabase)
     } else if (action === 'removeGroupSelection') {
       return await removeGroupSelection(groupSelection, user.id, supabase)
+    } else if (action === 'checkPermissions') {
+      return await checkUserPermissions(user.id)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -341,5 +343,29 @@ async function checkIfGroupIsSelected(groupId: string, userId: string, supabase:
   } catch (error) {
     console.error('Erro ao verificar se grupo já foi selecionado:', error)
     return false
+  }
+}
+
+// Função para verificar apenas as permissões do usuário (sem depender da Evolution API)
+async function checkUserPermissions(userId: string) {
+  try {
+    console.log('🔍 Verificando permissões do usuário:', userId)
+    
+    // Usar o serviço de assinaturas para verificar permissões
+    const result = await AsaasSubscriptionService.canSelectNewGroups(userId)
+    
+    console.log('✅ Resultado da verificação de permissões:', result)
+    
+    return NextResponse.json({
+      success: true,
+      canSelectNewGroups: result.canSelect,
+      reason: result.reason
+    })
+  } catch (error) {
+    console.error('❌ Erro ao verificar permissões:', error)
+    return NextResponse.json(
+      { error: 'Erro ao verificar permissões' },
+      { status: 500 }
+    )
   }
 }
