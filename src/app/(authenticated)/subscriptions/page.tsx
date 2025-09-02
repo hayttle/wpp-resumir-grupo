@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { CreditCard, Calendar, DollarSign, Search, AlertCircle, CheckCircle, Clock, ExternalLink } from 'lucide-react'
+import { CreditCard, Calendar, DollarSign, Search, AlertCircle, CheckCircle, Clock, ExternalLink, Users } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/toast'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
@@ -217,7 +217,8 @@ export default function SubscriptionsPage() {
                   {/* Header da Assinatura */}
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="font-semibold text-lg">
+                      <h3 className="font-semibold text-lg flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-600" />
                         {subscription.group_name || `Grupo ${subscription.id.slice(0, 8)}`}
                       </h3>
 
