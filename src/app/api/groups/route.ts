@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
       return await createSubscriptionForGroup(groupId, groupName, planId, user.id, supabase)
     } else if (action === 'suspendGroup') {
       return await suspendGroup(groupId, user.id, supabase)
+    } else if (action === 'reactivateGroup') {
+      return await reactivateGroup(groupId, user.id, supabase)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -668,6 +670,60 @@ async function suspendGroup(groupId: string, userId: string, supabase: any) {
 
   } catch (error) {
     console.error('❌ Erro interno ao suspender grupo:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
+      { status: 500 }
+    )
+  }
+}
+
+// Função para reativar um grupo (alterar status para ativo)
+async function reactivateGroup(groupId: string, userId: string, supabase: any) {
+  try {
+    console.log('▶️ Reativando grupo:', { groupId, userId })
+
+    // Buscar o grupo selecionado
+    const { data: groupSelection, error: findError } = await supabase
+      .from('group_selections')
+      .select('*')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single()
+
+    if (findError) {
+      console.error('❌ Erro ao buscar grupo selecionado:', findError)
+      return NextResponse.json(
+        { error: 'Grupo não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Atualizar status do grupo para ativo
+    const { data: updatedGroup, error: updateError } = await supabase
+      .from('group_selections')
+      .update({ active: true })
+      .eq('id', groupSelection.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('❌ Erro ao reativar grupo:', updateError)
+      return NextResponse.json(
+        { error: 'Erro ao reativar grupo' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Grupo reativado com sucesso:', updatedGroup)
+
+    return NextResponse.json({
+      success: true,
+      groupSelection: updatedGroup,
+      message: 'Grupo reativado com sucesso'
+    })
+
+  } catch (error) {
+    console.error('❌ Erro interno ao reativar grupo:', error)
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

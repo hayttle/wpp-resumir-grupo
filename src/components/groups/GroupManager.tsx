@@ -113,8 +113,17 @@ export default function GroupManager() {
   const [groupToRemove, setGroupToRemove] = useState<GroupSelection | null>(null)
   const [removingGroup, setRemovingGroup] = useState(false)
 
+  // Estados para o modal de reativação de grupo
+  const [showReactivateGroupModal, setShowReactivateGroupModal] = useState(false)
+  const [groupToReactivate, setGroupToReactivate] = useState<GroupSelection | null>(null)
+  const [reactivatingGroup, setReactivatingGroup] = useState(false)
+
   // Estado para controlar quais assinaturas têm pagamentos visíveis
   const [visiblePayments, setVisiblePayments] = useState<Set<string>>(new Set())
+
+  // Estados para filtros dos grupos selecionados
+  const [selectedGroupsFilter, setSelectedGroupsFilter] = useState('all') // 'all', 'active', 'inactive'
+  const [selectedGroupsSearch, setSelectedGroupsSearch] = useState('')
 
   // Função para recalcular a capacidade de seleção de grupos baseada no estado local
   const recalculateSelectionCapability = useCallback(() => {
@@ -293,6 +302,11 @@ export default function GroupManager() {
     setShowRemoveGroupModal(true)
   }
 
+  const handleReactivateGroup = (groupSelection: GroupSelection) => {
+    setGroupToReactivate(groupSelection)
+    setShowReactivateGroupModal(true)
+  }
+
   const confirmRemoveGroup = async () => {
     if (!groupToRemove) return
 
@@ -358,6 +372,74 @@ export default function GroupManager() {
       })
     } finally {
       setRemovingGroup(false)
+    }
+  }
+
+  const confirmReactivateGroup = async () => {
+    if (!groupToReactivate) return
+
+    try {
+      setReactivatingGroup(true)
+
+      // 1. Reativar assinatura se existir
+      if (groupToReactivate.subscription_id) {
+        try {
+          const reactivateResponse = await fetch(`/api/subscriptions/${groupToReactivate.subscription_id}/reactivate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user?.id
+            })
+          })
+
+          if (!reactivateResponse.ok) {
+            throw new Error('Erro ao reativar assinatura')
+          }
+        } catch (error) {
+          console.error('Erro ao reativar assinatura:', error)
+          // Continuar mesmo se falhar a reativação da assinatura
+        }
+      }
+
+      // 2. Reativar o grupo (alterar status para ativo)
+      const reactivateResponse = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'reactivateGroup',
+          groupId: groupToReactivate.group_id
+        })
+      })
+
+      if (!reactivateResponse.ok) {
+        throw new Error('Erro ao reativar grupo')
+      }
+
+      // 3. Recarregar lista de grupos selecionados para atualizar status
+      await loadUserGroupSelections()
+
+      // Fechar modal e limpar estado
+      setShowReactivateGroupModal(false)
+      setGroupToReactivate(null)
+
+      // Mostrar toast de sucesso
+      addToast({
+        type: 'success',
+        title: 'Grupo reativado!',
+        message: 'O grupo foi reativado e a assinatura reativada com sucesso.'
+      })
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Erro ao reativar grupo',
+        message: 'Tente novamente.'
+      })
+    } finally {
+      setReactivatingGroup(false)
     }
   }
 
@@ -497,6 +579,20 @@ export default function GroupManager() {
     group.subject.toLowerCase().includes(filterText.toLowerCase()) ||
     (group.desc && group.desc.toLowerCase().includes(filterText.toLowerCase()))
   )
+
+  // Filtrar grupos selecionados baseado no status e texto de busca
+  const filteredSelectedGroups = selectedGroups.filter(group => {
+    // Filtro por status
+    const statusMatch = selectedGroupsFilter === 'all' ||
+      (selectedGroupsFilter === 'active' && group.active) ||
+      (selectedGroupsFilter === 'inactive' && !group.active)
+
+    // Filtro por texto de busca
+    const searchMatch = selectedGroupsSearch === '' ||
+      (group.group_name && group.group_name.toLowerCase().includes(selectedGroupsSearch.toLowerCase()))
+
+    return statusMatch && searchMatch
+  })
 
   // Calcular paginação
   const totalPages = Math.ceil(filteredGroups.length / itemsPerPage)
@@ -920,32 +1016,26 @@ export default function GroupManager() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Grupos Selecionados ({selectedGroups.length})
+                  Grupos Selecionados ({filteredSelectedGroups.length} de {selectedGroups.length})
                 </CardTitle>
                 <CardDescription>
                   Estes grupos serão monitorados para resumos automáticos
                 </CardDescription>
               </div>
-              {/* Resumo das Assinaturas e Ações */}
+              {/* Resumo dos Status dos Grupos */}
               <div className="flex items-center gap-4">
                 <div className="flex gap-4 text-sm">
                   <div className="text-center">
                     <div className="font-semibold text-green-600">
-                      {selectedGroups.filter(g => g.subscription?.status === 'active').length}
+                      {selectedGroups.filter(g => g.active).length}
                     </div>
-                    <div className="text-gray-500">Ativas</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-red-600">
-                      {selectedGroups.filter(g => g.subscription?.status === 'overdue').length}
-                    </div>
-                    <div className="text-gray-500">Vencidas</div>
+                    <div className="text-gray-500">Ativos</div>
                   </div>
                   <div className="text-center">
                     <div className="font-semibold text-gray-600">
-                      {selectedGroups.filter(g => !g.subscription).length}
+                      {selectedGroups.filter(g => !g.active).length}
                     </div>
-                    <div className="text-gray-500">Sem Assinatura</div>
+                    <div className="text-gray-500">Inativos</div>
                   </div>
                 </div>
                 <Button
@@ -961,234 +1051,308 @@ export default function GroupManager() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-6">
-              {selectedGroups.map((selection) => (
-                <Card key={selection.id} className="overflow-hidden">
-                  {/* Header do Grupo */}
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <Users className="h-5 w-5 text-green-600" />
-                          {selection.group_name || 'Nome não disponível'}
-                        </CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant={selection.active ? "default" : "secondary"}
-                          className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
-                        >
-                          {selection.active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                        <Button
-                          onClick={() => handleRemoveGroup(selection)}
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Suspender
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
+            {/* Filtros para grupos selecionados */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              {/* Campo de busca */}
+              <div className="relative flex-1 min-w-0">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Filtrar grupos por nome..."
+                  value={selectedGroupsSearch}
+                  onChange={(e) => setSelectedGroupsSearch(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
 
-                  <CardContent className="pt-0">
-                    {/* Status da Assinatura */}
-                    {selection.subscription ? (
-                      <div className="space-y-4">
-                        {/* Card de Status da Assinatura */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                              <CreditCard className="h-4 w-4" />
-                              Assinatura Ativa
-                            </h4>
-                            <Badge
-                              className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
-                                selection.subscription.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                                  selection.subscription.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                                    'bg-yellow-100 text-yellow-800'
-                                }`}
-                            >
-                              {translateStatus(selection.subscription.status)}
-                            </Badge>
-                          </div>
+              {/* Filtro por status */}
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant={selectedGroupsFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedGroupsFilter('all')}
+                  className={selectedGroupsFilter === 'all' ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'text-gray-600 border-gray-300 hover:bg-gray-50'}
+                >
+                  Todos ({selectedGroups.length})
+                </Button>
+                <Button
+                  variant={selectedGroupsFilter === 'active' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedGroupsFilter('active')}
+                  className={selectedGroupsFilter === 'active' ? 'bg-green-600 hover:bg-green-700 text-white' : 'text-green-600 border-green-300 hover:bg-green-50'}
+                >
+                  Ativos ({selectedGroups.filter(g => g.active).length})
+                </Button>
+                <Button
+                  variant={selectedGroupsFilter === 'inactive' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedGroupsFilter('inactive')}
+                  className={selectedGroupsFilter === 'inactive' ? 'bg-gray-600 hover:bg-gray-700 text-white' : 'text-gray-600 border-gray-300 hover:bg-gray-50'}
+                >
+                  Inativos ({selectedGroups.filter(g => !g.active).length})
+                </Button>
+              </div>
+            </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-green-600" />
-                              <div>
-                                <p className="text-sm text-gray-600">Valor</p>
-                                <p className="font-semibold text-lg">
-                                  {formatCurrency(selection.subscription.value || 0)}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-green-600" />
-                              <div>
-                                <p className="text-sm text-gray-600">Ciclo</p>
-                                <p className="font-semibold">{translateCycle(selection.subscription.cycle || 'N/A')}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-green-600" />
-                              <div>
-                                <p className="text-sm text-gray-600">Próximo Vencimento</p>
-                                <p className="font-semibold text-sm">
-                                  {selection.subscription.next_billing_date ?
-                                    formatDate(selection.subscription.next_billing_date) :
-                                    'N/A'
-                                  }
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+            {/* Mensagem quando não há resultados no filtro */}
+            {filteredSelectedGroups.length === 0 && (selectedGroupsSearch || selectedGroupsFilter !== 'all') ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p>Nenhum grupo encontrado com os filtros aplicados</p>
+                <p className="text-sm">Tente ajustar os filtros ou limpar a busca</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    setSelectedGroupsSearch('')
+                    setSelectedGroupsFilter('all')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-6">
+                {filteredSelectedGroups.map((selection) => (
+                  <Card key={selection.id} className="overflow-hidden">
+                    {/* Header do Grupo */}
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <Users className="h-5 w-5 text-green-600" />
+                            {selection.group_name || 'Nome não disponível'}
+                          </CardTitle>
                         </div>
-
-                        {/* Ações da Assinatura */}
-                        <div className="flex flex-wrap gap-2">
-                          {selection.subscription.status === 'active' && (
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={selection.active ? "default" : "secondary"}
+                            className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                          >
+                            {selection.active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                          {selection.active ? (
                             <Button
+                              onClick={() => handleRemoveGroup(selection)}
                               variant="outline"
                               size="sm"
-                              className="text-orange-600 hover:bg-orange-50 border-orange-200"
-                              onClick={() => handleCancelSubscription(selection.subscription!.id)}
+                              className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
                             >
                               <Pause className="h-4 w-4 mr-1" />
-                              Cancelar Assinatura
+                              Suspender
                             </Button>
-                          )}
-                          {selection.subscription.status === 'inactive' && (
+                          ) : (
                             <Button
+                              onClick={() => handleReactivateGroup(selection)}
                               size="sm"
                               className="bg-green-600 hover:bg-green-700 text-white"
-                              onClick={() => handleReactivateSubscription(selection.subscription!.id)}
                             >
                               <RefreshCw className="h-4 w-4 mr-1" />
-                              Reativar Assinatura
+                              Reativar
                             </Button>
                           )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50"
-                            onClick={() => handleTogglePayments(selection.subscription!.id)}
-                          >
-                            {visiblePayments.has(selection.subscription!.id) ? (
-                              <EyeOff className="h-4 w-4 mr-1" />
-                            ) : (
-                              <Eye className="h-4 w-4 mr-1" />
-                            )}
-                            {visiblePayments.has(selection.subscription!.id) ? 'Ocultar Cobranças' : 'Ver Cobranças'}
-                          </Button>
                         </div>
+                      </div>
+                    </CardHeader>
 
-                        {/* Cobranças - Toggle */}
-                        {selection.payments && selection.payments.length > 0 && visiblePayments.has(selection.subscription!.id) && (
-                          <div className="bg-gray-50 p-4 rounded-lg">
-                            <h5 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                              <CreditCard className="h-4 w-4" />
-                              Cobranças ({selection.payments.length})
-                            </h5>
+                    <CardContent className="pt-0">
+                      {/* Status da Assinatura */}
+                      {selection.subscription ? (
+                        <div className="space-y-4">
+                          {/* Card de Status da Assinatura */}
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Assinatura Ativa
+                              </h4>
+                              <Badge
+                                className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
+                                  selection.subscription.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                                    selection.subscription.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                                      'bg-yellow-100 text-yellow-800'
+                                  }`}
+                              >
+                                {translateStatus(selection.subscription.status)}
+                              </Badge>
+                            </div>
 
-                            {/* Cabeçalho da tabela */}
-                            <div className="bg-white rounded-lg border overflow-hidden">
-                              <div className="grid grid-cols-12 gap-4 p-3 bg-gray-100 border-b text-xs font-semibold text-gray-600">
-                                <div className="col-span-2">Data</div>
-                                <div className="col-span-3">Descrição</div>
-                                <div className="col-span-2">Valor</div>
-                                <div className="col-span-2">Status</div>
-                                <div className="col-span-3">Ações</div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <div className="flex items-center gap-2">
+                                <DollarSign className="h-4 w-4 text-green-600" />
+                                <div>
+                                  <p className="text-sm text-gray-600">Valor</p>
+                                  <p className="font-semibold text-lg">
+                                    {formatCurrency(selection.subscription.value || 0)}
+                                  </p>
+                                </div>
                               </div>
-
-                              {/* Linhas dos pagamentos */}
-                              <div className="divide-y">
-                                {selection.payments.map((payment) => (
-                                  <div key={payment.id} className="grid grid-cols-12 gap-4 p-3 items-center">
-                                    {/* Data */}
-                                    <div className="col-span-2">
-                                      <p className="text-sm font-medium">
-                                        {payment.payment_date ?
-                                          formatDate(payment.payment_date) :
-                                          formatDate(payment.due_date)
-                                        }
-                                      </p>
-                                    </div>
-
-                                    {/* Descrição */}
-                                    <div className="col-span-3">
-                                      <p className="text-sm text-gray-700">
-                                        {payment.description || 'Pagamento da assinatura'}
-                                      </p>
-                                    </div>
-
-                                    {/* Valor */}
-                                    <div className="col-span-2">
-                                      <span className="font-semibold text-base">{formatCurrency(payment.value)}</span>
-                                    </div>
-
-                                    {/* Status */}
-                                    <div className="col-span-2">
-                                      <Badge
-                                        className={`text-xs ${payment.status === 'CONFIRMED' || payment.status === 'RECEIVED' ? 'bg-green-100 text-green-800' :
-                                          payment.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
-                                            payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                              'bg-gray-100 text-gray-800'
-                                          }`}
-                                      >
-                                        {translateStatus(payment.status)}
-                                      </Badge>
-                                    </div>
-
-                                    {/* Ações */}
-                                    <div className="col-span-3">
-                                      {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          className="text-xs px-3 py-1 h-7"
-                                          onClick={() => handlePayPayment(payment)}
-                                        >
-                                          PAGAR
-                                        </Button>
-                                      ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') && payment.transaction_receipt_url ? (
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-300 text-xs px-3 py-1 h-7"
-                                          onClick={() => window.open(payment.transaction_receipt_url, '_blank')}
-                                        >
-                                          Ver comprovante
-                                        </Button>
-                                      ) : (
-                                        <span className="text-xs text-gray-400">-</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-green-600" />
+                                <div>
+                                  <p className="text-sm text-gray-600">Ciclo</p>
+                                  <p className="font-semibold">{translateCycle(selection.subscription.cycle || 'N/A')}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-green-600" />
+                                <div>
+                                  <p className="text-sm text-gray-600">Próximo Vencimento</p>
+                                  <p className="font-semibold text-sm">
+                                    {selection.subscription.next_billing_date ?
+                                      formatDate(selection.subscription.next_billing_date) :
+                                      'N/A'
+                                    }
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      /* Sem Assinatura */
-                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                        <div className="flex items-center gap-2 text-yellow-800">
-                          <AlertCircle className="h-4 w-4" />
-                          <span className="font-medium">Sem assinatura ativa</span>
+
+                          {/* Ações da Assinatura */}
+                          <div className="flex flex-wrap gap-2">
+                            {selection.subscription.status === 'active' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
+                                onClick={() => handleCancelSubscription(selection.subscription!.id)}
+                              >
+                                <Pause className="h-4 w-4 mr-1" />
+                                Suspender Assinatura
+                              </Button>
+                            )}
+                            {selection.subscription.status === 'inactive' && (
+                              <Button
+                                size="sm"
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                onClick={() => handleReactivateSubscription(selection.subscription!.id)}
+                              >
+                                <RefreshCw className="h-4 w-4 mr-1" />
+                                Reativar Assinatura
+                              </Button>
+                            )}
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              className="px-3 py-1"
+                              onClick={() => handleTogglePayments(selection.subscription!.id)}
+                            >
+                              {visiblePayments.has(selection.subscription!.id) ? (
+                                <EyeOff className="h-4 w-4 mr-1" />
+                              ) : (
+                                <Eye className="h-4 w-4 mr-1" />
+                              )}
+                              {visiblePayments.has(selection.subscription!.id) ? 'Ocultar Cobranças' : 'Ver Cobranças'}
+                            </Button>
+                          </div>
+
+                          {/* Cobranças - Toggle */}
+                          {selection.payments && selection.payments.length > 0 && visiblePayments.has(selection.subscription!.id) && (
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h5 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Cobranças ({selection.payments.length})
+                              </h5>
+
+                              {/* Cabeçalho da tabela */}
+                              <div className="bg-white rounded-lg border overflow-hidden">
+                                <div className="grid grid-cols-12 gap-4 p-3 bg-gray-100 border-b text-xs font-semibold text-gray-600">
+                                  <div className="col-span-2">Data</div>
+                                  <div className="col-span-3">Descrição</div>
+                                  <div className="col-span-2">Valor</div>
+                                  <div className="col-span-2">Status</div>
+                                  <div className="col-span-3">Ações</div>
+                                </div>
+
+                                {/* Linhas dos pagamentos */}
+                                <div className="divide-y">
+                                  {selection.payments.map((payment) => (
+                                    <div key={payment.id} className="grid grid-cols-12 gap-4 p-3 items-center">
+                                      {/* Data */}
+                                      <div className="col-span-2">
+                                        <p className="text-sm font-medium">
+                                          {payment.payment_date ?
+                                            formatDate(payment.payment_date) :
+                                            formatDate(payment.due_date)
+                                          }
+                                        </p>
+                                      </div>
+
+                                      {/* Descrição */}
+                                      <div className="col-span-3">
+                                        <p className="text-sm text-gray-700">
+                                          {payment.description || 'Pagamento da assinatura'}
+                                        </p>
+                                      </div>
+
+                                      {/* Valor */}
+                                      <div className="col-span-2">
+                                        <span className="font-semibold text-base">{formatCurrency(payment.value)}</span>
+                                      </div>
+
+                                      {/* Status */}
+                                      <div className="col-span-2">
+                                        <Badge
+                                          className={`text-xs ${payment.status === 'CONFIRMED' || payment.status === 'RECEIVED' ? 'bg-green-100 text-green-800' :
+                                            payment.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
+                                              payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                'bg-gray-100 text-gray-800'
+                                            }`}
+                                        >
+                                          {translateStatus(payment.status)}
+                                        </Badge>
+                                      </div>
+
+                                      {/* Ações */}
+                                      <div className="col-span-3">
+                                        {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            className="text-xs px-3 py-1 h-7"
+                                            onClick={() => handlePayPayment(payment)}
+                                          >
+                                            PAGAR
+                                          </Button>
+                                        ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') && payment.transaction_receipt_url ? (
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-300 text-xs px-3 py-1 h-7"
+                                            onClick={() => window.open(payment.transaction_receipt_url, '_blank')}
+                                          >
+                                            Ver comprovante
+                                          </Button>
+                                        ) : (
+                                          <span className="text-xs text-gray-400">-</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          Este grupo não possui uma assinatura vinculada. Remova e selecione novamente para criar uma nova assinatura.
-                        </p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                      ) : (
+                        /* Sem Assinatura */
+                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                          <div className="flex items-center gap-2 text-yellow-800">
+                            <AlertCircle className="h-4 w-4" />
+                            <span className="font-medium">Sem assinatura ativa</span>
+                          </div>
+                          <p className="text-sm text-yellow-700 mt-1">
+                            Este grupo não possui uma assinatura vinculada. Remova e selecione novamente para criar uma nova assinatura.
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -1279,6 +1443,26 @@ Ao suspender:
         confirmText="Sim, Suspender"
         cancelText="Manter Ativo"
         isLoading={removingGroup}
+      />
+
+      {/* Modal de Confirmação de Reativação de Grupo */}
+      <ConfirmModal
+        isOpen={showReactivateGroupModal}
+        onClose={() => {
+          setShowReactivateGroupModal(false)
+          setGroupToReactivate(null)
+        }}
+        onConfirm={confirmReactivateGroup}
+        title="Reativar Grupo"
+        message={`Tem certeza que deseja reativar este grupo?
+
+Ao reativar:
+• O grupo será marcado como ativo
+• A assinatura vinculada será reativada
+• Serão gerados resumos automáticos novamente`}
+        confirmText="Sim, Reativar"
+        cancelText="Manter Inativo"
+        isLoading={reactivatingGroup}
       />
     </div>
   )
