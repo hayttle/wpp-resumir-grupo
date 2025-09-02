@@ -94,75 +94,7 @@ export class DashboardService {
     }
   }
 
-  // Buscar atividade recente do usuário
-  static async getUserRecentActivity(userId: string, limit: number = 10) {
-    try {
-      // Buscar últimas seleções de grupos
-      const { data: recentGroups, error: groupsError } = await supabase
-        .from('group_selections')
-        .select('id, group_name, created_at, active')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(limit)
 
-      if (groupsError) {
-        console.error('Erro ao buscar grupos recentes:', groupsError)
-        return []
-      }
-
-      // Se não há grupos, retornar apenas atividades de grupos (se houver)
-      if (!recentGroups || recentGroups.length === 0) {
-        return []
-      }
-
-      // Buscar últimos resumos apenas se houver grupos
-      const groupIds = recentGroups.map(g => g.id).filter(id => id) // Filtrar IDs válidos
-      
-      let recentSummaries: any[] = []
-      if (groupIds.length > 0) {
-        const { data: summaries, error: summariesError } = await supabase
-          .from('summaries')
-          .select('content, created_at, group_selection_id')
-          .in('group_selection_id', groupIds)
-          .order('created_at', { ascending: false })
-          .limit(limit)
-
-        if (summariesError) {
-          console.error('Erro ao buscar resumos recentes:', summariesError)
-          // Não falhar se houver erro nos resumos, continuar com grupos
-        } else {
-          recentSummaries = summaries || []
-        }
-      }
-
-      // Combinar e ordenar atividades
-      const activities = [
-        ...recentGroups?.map(g => ({
-          type: 'group_selection' as const,
-          title: g.active ? 'Grupo ativado' : 'Grupo desativado',
-          description: g.group_name,
-          date: g.created_at,
-          icon: '👥'
-        })) || [],
-        ...recentSummaries?.map(s => ({
-          type: 'summary' as const,
-          title: 'Resumo gerado',
-          description: s.content.substring(0, 100) + '...',
-          date: s.created_at,
-          icon: '📝'
-        })) || []
-      ]
-
-      // Ordenar por data (mais recente primeiro)
-      return activities.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      ).slice(0, limit)
-
-    } catch (error) {
-      console.error('Erro ao buscar atividade recente:', error)
-      return []
-    }
-  }
 
   // Buscar status da instância em tempo real
   static async getInstanceStatus(userId: string) {

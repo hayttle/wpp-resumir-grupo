@@ -292,10 +292,6 @@ export default function SummariesPage() {
                         <MessageSquare className="h-4 w-4" />
                         <span>{summary.message_count} mensagens</span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>Criado em {formatDateTime(summary.created_at)}</span>
-                      </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">

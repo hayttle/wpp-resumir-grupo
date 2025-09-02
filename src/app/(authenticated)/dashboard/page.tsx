@@ -13,7 +13,7 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [recentActivity, setRecentActivity] = useState<any[]>([])
+
 
   useEffect(() => {
     // Se já temos o usuário, carregar dados
@@ -44,9 +44,7 @@ export default function DashboardPage() {
         lastSummaryDate: null
       })
 
-      // Buscar atividade recente
-      const activity = await DashboardService.getUserRecentActivity(user.id, 5)
-      setRecentActivity(activity || [])
+
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error)
       // Em caso de erro, definir dados padrão
@@ -59,7 +57,7 @@ export default function DashboardPage() {
         instanceName: null,
         lastSummaryDate: null
       })
-      setRecentActivity([])
+
     } finally {
       setLoading(false)
     }
@@ -265,38 +263,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Recent Activity */}
-        <Card className="border-gray-200 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-gray-900">Atividade Recente</CardTitle>
-            <CardDescription className="text-gray-600">
-              Suas últimas ações no sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {recentActivity.length > 0 ? (
-              <div className="space-y-4">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-2xl">{activity.icon}</div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{activity.title}</div>
-                      <div className="text-sm text-gray-600">{activity.description}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {formatDate(activity.date)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>Nenhuma atividade recente</p>
-                <p className="text-sm">Configure sua instância e grupos para começar</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
