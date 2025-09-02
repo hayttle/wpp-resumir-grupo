@@ -1124,11 +1124,11 @@ export default function GroupManager() {
                       {selection.subscription ? (
                         <div className="space-y-4">
                           {/* Card de Status da Assinatura */}
-                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
+                          <div className="p-4 rounded-lg border">
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <CreditCard className="h-4 w-4" />
-                                Assinatura Ativa
+                                <Users className="h-4 w-4" />
+                                {selection.group_name}
                               </h4>
                               <Badge
                                 className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
