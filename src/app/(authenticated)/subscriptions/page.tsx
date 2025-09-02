@@ -273,12 +273,10 @@ export default function SubscriptionsPage() {
                                   )}
                                 </td>
                                 <td className="py-2">
-                                  <div className="flex items-center justify-center">
-                                    <Badge className={getStatusColor(payment.status)}>
-                                      {getStatusIcon(payment.status)}
-                                      <span className="ml-1">{translateStatus(payment.status)}</span>
-                                    </Badge>
-                                  </div>
+                                  <Badge className={getStatusColor(payment.status)}>
+                                    {getStatusIcon(payment.status)}
+                                    <span className="ml-1">{translateStatus(payment.status)}</span>
+                                  </Badge>
                                 </td>
                                 <td className="py-2">
                                   <div className="flex items-center justify-center">
