@@ -85,6 +85,8 @@ export async function POST(request: NextRequest) {
       return await checkUserPermissions(user.id)
     } else if (action === 'createSubscriptionForGroup') {
       return await createSubscriptionForGroup(groupId, groupName, planId, user.id, supabase)
+    } else if (action === 'suspendGroup') {
+      return await suspendGroup(groupId, user.id, supabase)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -614,6 +616,60 @@ async function createSubscriptionForGroup(groupId: string, groupName: string, pl
     console.error('❌ Erro ao criar assinatura para grupo:', error)
     return NextResponse.json(
       { error: 'Erro ao criar assinatura para o grupo' },
+      { status: 500 }
+    )
+  }
+}
+
+// Função para suspender um grupo (alterar status para inativo)
+async function suspendGroup(groupId: string, userId: string, supabase: any) {
+  try {
+    console.log('⏸️ Suspendo grupo:', { groupId, userId })
+
+    // Buscar o grupo selecionado
+    const { data: groupSelection, error: findError } = await supabase
+      .from('group_selections')
+      .select('*')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single()
+
+    if (findError) {
+      console.error('❌ Erro ao buscar grupo selecionado:', findError)
+      return NextResponse.json(
+        { error: 'Grupo não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    // Atualizar status do grupo para inativo
+    const { data: updatedGroup, error: updateError } = await supabase
+      .from('group_selections')
+      .update({ active: false })
+      .eq('id', groupSelection.id)
+      .select()
+      .single()
+
+    if (updateError) {
+      console.error('❌ Erro ao suspender grupo:', updateError)
+      return NextResponse.json(
+        { error: 'Erro ao suspender grupo' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Grupo suspenso com sucesso:', updatedGroup)
+
+    return NextResponse.json({
+      success: true,
+      groupSelection: updatedGroup,
+      message: 'Grupo suspenso com sucesso'
+    })
+
+  } catch (error) {
+    console.error('❌ Erro interno ao suspender grupo:', error)
+    return NextResponse.json(
+      { error: 'Erro interno do servidor' },
       { status: 500 }
     )
   }

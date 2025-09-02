@@ -108,6 +108,11 @@ export default function GroupManager() {
   const [subscriptionToReactivate, setSubscriptionToReactivate] = useState<string | null>(null)
   const [reactivatingSubscription, setReactivatingSubscription] = useState(false)
 
+  // Estados para o modal de remoção de grupo
+  const [showRemoveGroupModal, setShowRemoveGroupModal] = useState(false)
+  const [groupToRemove, setGroupToRemove] = useState<GroupSelection | null>(null)
+  const [removingGroup, setRemovingGroup] = useState(false)
+
   // Estado para controlar quais assinaturas têm pagamentos visíveis
   const [visiblePayments, setVisiblePayments] = useState<Set<string>>(new Set())
 
@@ -283,36 +288,76 @@ export default function GroupManager() {
     await handleSelectGroup(group)
   }
 
-  const deselectGroup = async (groupSelection: GroupSelection) => {
+  const handleRemoveGroup = (groupSelection: GroupSelection) => {
+    setGroupToRemove(groupSelection)
+    setShowRemoveGroupModal(true)
+  }
+
+  const confirmRemoveGroup = async () => {
+    if (!groupToRemove) return
+
     try {
+      setRemovingGroup(true)
 
+      // 1. Cancelar assinatura se existir
+      if (groupToRemove.subscription_id) {
+        try {
+          const cancelResponse = await fetch(`/api/subscriptions/${groupToRemove.subscription_id}/cancel`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user?.id
+            })
+          })
 
-      const success = await GroupService.removeGroupSelection(groupSelection.group_id)
-
-      if (success) {
-        // Remover da lista de grupos selecionados
-        setSelectedGroups(prev => prev.filter(gs => gs.id !== groupSelection.id))
-
-        // Atualizar lista de grupos com status de seleção
-        setGroups(prevGroups =>
-          prevGroups.map(g =>
-            g.id === groupSelection.group_id ? { ...g, isSelected: false, canSelect: true } : g
-          )
-        )
-
-      } else {
-        addToast({
-          type: 'error',
-          title: 'Erro ao desselecionar grupo',
-          message: 'Tente novamente.'
-        })
+          if (!cancelResponse.ok) {
+            throw new Error('Erro ao cancelar assinatura')
+          }
+        } catch (error) {
+          console.error('Erro ao cancelar assinatura:', error)
+          // Continuar mesmo se falhar o cancelamento da assinatura
+        }
       }
+
+      // 2. Suspender o grupo (alterar status para inativo)
+      const suspendResponse = await fetch('/api/groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'suspendGroup',
+          groupId: groupToRemove.group_id
+        })
+      })
+
+      if (!suspendResponse.ok) {
+        throw new Error('Erro ao suspender grupo')
+      }
+
+      // 3. Recarregar lista de grupos selecionados para atualizar status
+      await loadUserGroupSelections()
+
+      // Fechar modal e limpar estado
+      setShowRemoveGroupModal(false)
+      setGroupToRemove(null)
+
+      // Mostrar toast de sucesso
+      addToast({
+        type: 'success',
+        title: 'Grupo suspenso!',
+        message: 'O grupo foi suspenso e a assinatura cancelada com sucesso.'
+      })
     } catch (error) {
       addToast({
         type: 'error',
-        title: 'Erro ao desselecionar grupo',
+        title: 'Erro ao suspender grupo',
         message: 'Tente novamente.'
       })
+    } finally {
+      setRemovingGroup(false)
     }
   }
 
@@ -936,13 +981,13 @@ export default function GroupManager() {
                           {selection.active ? 'Ativo' : 'Inativo'}
                         </Badge>
                         <Button
-                          onClick={() => deselectGroup(selection)}
+                          onClick={() => handleRemoveGroup(selection)}
                           variant="outline"
                           size="sm"
                           className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
-                          Remover
+                          Suspender
                         </Button>
                       </div>
                     </div>
@@ -1214,6 +1259,26 @@ Ao reativar:
         confirmText="Sim, Reativar"
         cancelText="Manter Cancelada"
         isLoading={reactivatingSubscription}
+      />
+
+      {/* Modal de Confirmação de Remoção de Grupo */}
+      <ConfirmModal
+        isOpen={showRemoveGroupModal}
+        onClose={() => {
+          setShowRemoveGroupModal(false)
+          setGroupToRemove(null)
+        }}
+        onConfirm={confirmRemoveGroup}
+        title="Suspender Grupo"
+        message={`Tem certeza que deseja suspender este grupo?
+
+Ao suspender:
+• O grupo será marcado como inativo
+• A assinatura vinculada será suspensa
+• Não será mais gerado resumos automáticos`}
+        confirmText="Sim, Suspender"
+        cancelText="Manter Ativo"
+        isLoading={removingGroup}
       />
     </div>
   )
