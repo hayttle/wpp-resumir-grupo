@@ -333,7 +333,8 @@ async function saveGroupSelection(groupSelection: any, instanceId: string, userI
       instance_id: instanceId,
       group_name: groupSelection.group_name,
       group_id: groupSelection.group_id,
-      active: true
+      active: true,
+      size: groupSelection.size || 0 // Incluir número de membros
     }
 
     console.log('🔍 Dados para inserção:', insertData)

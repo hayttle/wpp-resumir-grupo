@@ -96,6 +96,7 @@ export interface GroupSelection {
   group_id: string
   subscription_id?: string // ID da assinatura vinculada ao grupo
   active: boolean
+  size?: number // Número de membros do grupo WhatsApp
   created_at: string
   updated_at?: string
 }

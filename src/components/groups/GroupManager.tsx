@@ -1090,7 +1090,7 @@ export default function GroupManager() {
                             </h3>
                           </div>
                           <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>X membros</span>
+                            <span>{selection.size || 0} membros</span>
                             <Badge
                               variant={selection.active ? "default" : "secondary"}
                               className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
