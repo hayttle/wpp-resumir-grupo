@@ -59,6 +59,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       href: '/summaries',
       icon: <FileText className="h-5 w-5" />,
       description: 'Visualizar resumos gerados'
+    },
+    {
+      label: 'Debug Insert',
+      href: '/debug-insert',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Inserir dados de teste'
     }
   ]
 
