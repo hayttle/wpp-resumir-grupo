@@ -273,35 +273,39 @@ export default function SubscriptionsPage() {
                                   )}
                                 </td>
                                 <td className="py-2">
-                                  <Badge className={getStatusColor(payment.status)}>
-                                    {getStatusIcon(payment.status)}
-                                    <span className="ml-1">{translateStatus(payment.status)}</span>
-                                  </Badge>
+                                  <div className="flex items-center justify-center">
+                                    <Badge className={getStatusColor(payment.status)}>
+                                      {getStatusIcon(payment.status)}
+                                      <span className="ml-1">{translateStatus(payment.status)}</span>
+                                    </Badge>
+                                  </div>
                                 </td>
                                 <td className="py-2">
-                                  {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      onClick={() => handlePayPayment(payment)}
-                                      className="text-xs h-7 px-2"
-                                    >
-                                      <PayIcon className="h-3 w-3 mr-1" />
-                                      Pagar
-                                    </Button>
-                                  ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') ? (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleViewReceipt(payment)}
-                                      className="text-xs h-7 px-2"
-                                    >
-                                      <ExternalLink className="h-3 w-3 mr-1" />
-                                      Ver Comprovante
-                                    </Button>
-                                  ) : (
-                                    <span className="text-xs text-gray-400">-</span>
-                                  )}
+                                  <div className="flex items-center justify-center">
+                                    {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() => handlePayPayment(payment)}
+                                        className="text-xs h-7 px-2"
+                                      >
+                                        <PayIcon className="h-3 w-3 mr-1" />
+                                        Pagar
+                                      </Button>
+                                    ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') ? (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleViewReceipt(payment)}
+                                        className="text-xs h-7 px-2"
+                                      >
+                                        <ExternalLink className="h-3 w-3 mr-1" />
+                                        Ver Comprovante
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-gray-400">-</span>
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
