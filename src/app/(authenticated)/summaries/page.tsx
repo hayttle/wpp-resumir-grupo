@@ -9,11 +9,11 @@ import { useToast } from '@/components/ui/toast'
 import { SummaryService, SummaryWithGroup } from '@/lib/services/summaryService'
 import { GroupService } from '@/lib/services/groupService'
 import { formatDate } from '@/lib/utils/formatters'
-import { 
-  Search, 
-  Calendar, 
-  MessageSquare, 
-  Send, 
+import {
+  Search,
+  Calendar,
+  MessageSquare,
+  Send,
   Clock,
   Filter,
   ChevronLeft,
@@ -57,7 +57,7 @@ export default function SummariesPage() {
         page,
         limit
       }
-      
+
       const response = await SummaryService.getSummaries(filters)
       setSummaries(response.summaries)
       setTotalPages(response.pagination.totalPages)
@@ -181,8 +181,8 @@ export default function SummariesPage() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-16 w-16 text-gray-300 mb-4" />
               <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                {searchTerm || selectedGroup !== 'all' 
-                  ? 'Nenhum resumo encontrado' 
+                {searchTerm || selectedGroup !== 'all'
+                  ? 'Nenhum resumo encontrado'
                   : 'Nenhum resumo disponível'
                 }
               </h3>
