@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Obter dados do request
     const body = await request.json()
-    const { action, instanceName, groupSelection } = body
+    const { action, instanceName, groupSelection, groupId, groupName, planId } = body
     
     if (!action) {
       return NextResponse.json(
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'checkPermissions') {
       return await checkUserPermissions(user.id)
     } else if (action === 'createSubscriptionForGroup') {
-      return await createSubscriptionForGroup(body.groupId, body.planId, user.id, supabase)
+      return await createSubscriptionForGroup(groupId, groupName, planId, user.id, supabase)
     } else {
       return NextResponse.json(
         { error: 'Ação inválida' },
@@ -374,9 +374,9 @@ async function checkUserPermissions(userId: string) {
 }
 
 // Função para criar assinatura para um grupo específico
-async function createSubscriptionForGroup(groupId: string, planId: string, userId: string, supabase: any) {
+async function createSubscriptionForGroup(groupId: string, groupName: string, planId: string, userId: string, supabase: any) {
   try {
-    console.log('🔍 Criando assinatura para grupo:', { groupId, planId, userId })
+    console.log('🔍 Criando assinatura para grupo:', { groupId, groupName, planId, userId })
 
     // Verificar se o grupo já tem uma assinatura
     const { data: existingSubscription, error: checkError } = await supabase
@@ -395,56 +395,145 @@ async function createSubscriptionForGroup(groupId: string, planId: string, userI
       )
     }
 
-    // Criar assinatura usando o AsaasSubscriptionService
-    const { subscription, asaasSubscription } = await AsaasSubscriptionService.createSubscriptionForGroup(
-      userId,
-      planId,
-      groupId
-    )
+    // Verificar se o grupo já foi selecionado
+    const { data: existingSelection, error: selectionError } = await supabase
+      .from('group_selections')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('user_id', userId)
+      .single()
 
-    console.log('✅ Assinatura criada:', { subscriptionId: subscription.id, asaasId: asaasSubscription.id })
+    if (selectionError && selectionError.code !== 'PGRST116') throw selectionError
 
-    // Criar seleção de grupo vinculada à assinatura
-    const groupSelection = {
+    if (existingSelection) {
+      return NextResponse.json(
+        { error: 'Este grupo já foi selecionado' },
+        { status: 400 }
+      )
+    }
+
+    // Buscar instância do usuário para criar o group_selection
+    const { data: instance, error: instanceError } = await supabase
+      .from('instances')
+      .select('id')
+      .eq('user_id', userId)
+      .single()
+
+    if (instanceError || !instance) {
+      return NextResponse.json(
+        { error: 'Instância não encontrada' },
+        { status: 404 }
+      )
+    }
+
+    // Usar o nome do grupo enviado pelo frontend
+    console.log('🔍 Usando nome do grupo enviado pelo frontend:', groupName)
+
+    // Criar grupo selecionado no banco primeiro para obter o UUID
+    console.log('🔍 Criando grupo selecionado no banco...')
+    
+    const groupSelectionData = {
       user_id: userId,
-      instance_id: '', // Será preenchido quando necessário
-      group_name: '', // Será preenchido quando necessário
+      instance_id: instance.id,
+      group_name: groupName, // Nome do grupo enviado pelo frontend
       group_id: groupId,
-      subscription_id: subscription.id,
+      subscription_id: null, // Será preenchido pelo webhook
       active: true
     }
 
-    const { data: savedSelection, error: selectionError } = await supabase
+    console.log('🔍 Dados do grupo selecionado para salvar:', groupSelectionData)
+
+    const { data: newGroupSelection, error: insertError } = await supabase
       .from('group_selections')
-      .insert(groupSelection)
+      .insert(groupSelectionData)
       .select()
       .single()
 
-    if (selectionError) throw selectionError
-
-    console.log('✅ Seleção de grupo criada:', { selectionId: savedSelection.id })
-
-    // Buscar o pagamento criado para obter o invoice_url
-    const { data: payment, error: paymentError } = await supabase
-      .from('payments')
-      .select('invoice_url')
-      .eq('subscription_id', subscription.id)
-      .eq('status', 'PENDING')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (paymentError) {
-      console.error('❌ Erro ao buscar pagamento:', paymentError)
-      // Continuar mesmo sem o invoice_url
+    if (insertError) {
+      console.error('❌ Erro ao criar grupo selecionado:', insertError)
+      return NextResponse.json(
+        { error: 'Erro ao criar seleção de grupo' },
+        { status: 500 }
+      )
     }
 
+    console.log('✅ Grupo selecionado criado no banco:', newGroupSelection)
+
+    // Criar assinatura no Asaas usando o UUID do grupo como externalReference
+    console.log('🔍 Criando assinatura no Asaas...', { userId, planId, groupId, groupSelectionId: newGroupSelection.id })
+    
+    const { subscription, asaasSubscription } = await AsaasSubscriptionService.createSubscriptionForGroup(
+      userId,
+      planId,
+      newGroupSelection.id // Usar UUID do grupo selecionado como externalReference
+    )
+
+    console.log('✅ Assinatura criada no Asaas:', { 
+      subscriptionId: subscription.id, 
+      asaasId: asaasSubscription.id,
+      externalReference: asaasSubscription.externalReference
+    })
+
+    // Criar assinatura local imediatamente após response do Asaas
+    console.log('🔍 Criando assinatura local no banco...')
+    
+    const subscriptionInsert = {
+      user_id: userId,
+      plan_id: planId,
+      asaas_subscription_id: asaasSubscription.id,
+      group_id: groupId,
+      external_reference: asaasSubscription.externalReference,
+      customer: asaasSubscription.customer, // ID do cliente Asaas
+      status: asaasSubscription.status.toLowerCase(),
+      start_date: new Date().toISOString(),
+      next_billing_date: asaasSubscription.nextDueDate ? new Date(asaasSubscription.nextDueDate).toISOString() : null,
+      value: asaasSubscription.value,
+      billing_type: asaasSubscription.billingType,
+      cycle: asaasSubscription.cycle,
+      description: asaasSubscription.description
+    }
+
+    const { data: newSubscription, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .insert(subscriptionInsert)
+      .select('id')
+      .single()
+
+    if (subscriptionError) {
+      console.error('❌ Erro ao criar assinatura local:', subscriptionError)
+      return NextResponse.json(
+        { error: 'Erro ao criar assinatura local' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Assinatura local criada:', newSubscription)
+
+    // Atualizar group_selection com o subscription_id local
+    console.log('🔍 Atualizando group_selection com subscription_id local...')
+    
+    const { error: updateError } = await supabase
+      .from('group_selections')
+      .update({ subscription_id: newSubscription.id })
+      .eq('id', newGroupSelection.id)
+
+    if (updateError) {
+      console.error('❌ Erro ao atualizar group_selection:', updateError)
+      return NextResponse.json(
+        { error: 'Erro ao vincular assinatura ao grupo' },
+        { status: 500 }
+      )
+    }
+
+    console.log('✅ Group_selection atualizado com subscription_id local')
+
+    // Retornar dados da assinatura e grupo selecionado
     return NextResponse.json({
       success: true,
-      subscription,
+      subscription: newSubscription,
       asaasSubscription,
-      groupSelection: savedSelection,
-      invoiceUrl: payment?.invoice_url || null
+      groupSelection: newGroupSelection,
+      message: 'Assinatura criada no Asaas e vinculada ao grupo com sucesso.'
     })
 
   } catch (error) {

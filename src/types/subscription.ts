@@ -87,6 +87,7 @@ export interface AsaasSubscription {
   maxPayments?: number
   status: 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'OVERDUE'
   deleted: boolean
+  externalReference?: string
   creditCard?: {
     creditCardNumber: string
     creditCardBrand: string

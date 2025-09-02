@@ -129,8 +129,8 @@ export class AsaasSubscriptionService {
       // Obter customer do Asaas
       const customer = await this.getOrCreateAsaasCustomer(userId)
 
-      // Criar external_reference no formato: "group_{groupId}"
-      const externalReference = `group_${groupId}`
+      // Usar o UUID do grupo selecionado como externalReference
+      const externalReference = groupId
 
       // Preparar dados para criação da assinatura no Asaas
       const subscriptionData: CreateSubscriptionRequest = {
@@ -143,26 +143,13 @@ export class AsaasSubscriptionService {
         externalReference: externalReference
       }
 
-      // Criar assinatura no Asaas
-      const asaasResponse = await fetch(`${ASAAS_API_URL}/subscriptions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'access_token': ASAAS_API_KEY!
-        },
-        body: JSON.stringify(subscriptionData)
-      })
-
-      if (!asaasResponse.ok) {
-        const errorData = await asaasResponse.json()
-        throw new Error(`Erro ao criar assinatura no Asaas: ${errorData.message || 'Erro desconhecido'}`)
-      }
-
-      const asaasSubscription: AsaasSubscription = await asaasResponse.json()
+      // Criar assinatura no Asaas usando o AsaasService
+      const asaasSubscription = await AsaasService.createSubscription(subscriptionData)
       Logger.info('AsaasSubscriptionService', 'Assinatura criada no Asaas', { asaasId: asaasSubscription.id })
 
-      // Salvar assinatura no banco de dados
-      const subscriptionInsert = {
+      // Criar objeto de assinatura local (não salvar no banco ainda)
+      // O webhook SUBSCRIPTION_CREATED vai processar e salvar
+      const subscription = {
         user_id: userId,
         plan_id: planId,
         asaas_subscription_id: asaasSubscription.id,
@@ -174,19 +161,13 @@ export class AsaasSubscriptionService {
         value: asaasSubscription.value,
         billing_type: asaasSubscription.billingType,
         cycle: asaasSubscription.cycle,
-        description: asaasSubscription.description
-      }
+        description: asaasSubscription.description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as Subscription
 
-      const { data: subscription, error: insertError } = await supabaseAdmin
-        .from('subscriptions')
-        .insert(subscriptionInsert)
-        .select()
-        .single()
-
-      if (insertError) throw insertError
-
-      Logger.info('AsaasSubscriptionService', 'Assinatura salva no banco', { 
-        subscriptionId: subscription.id, 
+      Logger.info('AsaasSubscriptionService', 'Assinatura criada localmente (aguardando webhook)', { 
+        asaasId: asaasSubscription.id, 
         groupId,
         externalReference 
       })
@@ -324,30 +305,43 @@ export class AsaasSubscriptionService {
 
       const payment = data.payment
 
-      // Buscar assinatura pelo subscription_id do Asaas
-      const { data: subscription, error: subError } = await supabaseAdmin
+      // Buscar assinatura local pelo asaas_subscription_id
+      const { data: localSubscription, error: subError } = await supabaseAdmin
         .from('subscriptions')
-        .select('id, user_id')
+        .select('id, user_id, group_id, external_reference')
         .eq('asaas_subscription_id', payment.subscription)
         .single()
 
-      if (subError) throw subError
-      if (!subscription) {
-        throw new Error(`Assinatura não encontrada para subscription_id: ${payment.subscription}`)
+      if (subError) {
+        Logger.error('AsaasSubscriptionService', 'Assinatura local não encontrada para o pagamento', { 
+          error: subError,
+          asaasSubscriptionId: payment.subscription 
+        })
+        throw new Error(`Assinatura local não encontrada para asaas_subscription_id: ${payment.subscription}`)
       }
+
+      if (!localSubscription) {
+        throw new Error(`Assinatura local não encontrada para asaas_subscription_id: ${payment.subscription}`)
+      }
+
+      Logger.info('AsaasSubscriptionService', 'Assinatura local encontrada para o pagamento', { 
+        localSubscriptionId: localSubscription.id,
+        groupId: localSubscription.group_id,
+        asaasSubscriptionId: payment.subscription
+      })
 
       // Criar registro do pagamento no banco
       const paymentInsert = {
-        subscription_id: subscription.id,
+        subscription_id: localSubscription.id, // Usar o ID local da assinatura
         asaas_payment_id: payment.id,
-        user_id: subscription.user_id,
+        user_id: localSubscription.user_id,
         value: payment.value,
         status: payment.status,
         billing_type: payment.billingType,
         due_date: convertAsaasDateToUTC(payment.dueDate),
         payment_date: payment.paymentDate ? convertAsaasDateToUTC(payment.paymentDate) : null,
         description: payment.description,
-        external_reference: null, // externalReference não está disponível no webhook
+        external_reference: localSubscription.external_reference, // UUID do grupo selecionado
         invoice_url: payment.invoiceUrl,
         bank_slip_url: payment.bankSlipUrl,
         transaction_receipt_url: payment.transactionReceiptUrl
@@ -359,9 +353,11 @@ export class AsaasSubscriptionService {
 
       if (insertError) throw insertError
 
-      Logger.info('AsaasSubscriptionService', 'Pagamento criado com sucesso', { 
+      Logger.info('AsaasSubscriptionService', '✅ Pagamento criado com sucesso', { 
         paymentId: payment.id, 
-        subscriptionId: subscription.id 
+        localSubscriptionId: localSubscription.id,
+        groupId: localSubscription.group_id,
+        asaasSubscriptionId: payment.subscription
       })
 
     } catch (error) {
@@ -396,23 +392,23 @@ export class AsaasSubscriptionService {
         // Se o pagamento não existe, criar primeiro (caso o PAYMENT_CREATED não tenha sido processado)
         Logger.info('AsaasSubscriptionService', 'Pagamento não encontrado, criando primeiro', { paymentId: payment.id })
         
-        // Buscar assinatura pelo subscription_id do Asaas
-        const { data: subscription, error: subError } = await supabaseAdmin
+        // Buscar assinatura local pelo asaas_subscription_id
+        const { data: localSubscription, error: subError } = await supabaseAdmin
           .from('subscriptions')
-          .select('id, user_id')
+          .select('id, user_id, group_id, external_reference')
           .eq('asaas_subscription_id', payment.subscription)
           .single()
 
         if (subError) throw subError
-        if (!subscription) {
-          throw new Error(`Assinatura não encontrada para subscription_id: ${payment.subscription}`)
+        if (!localSubscription) {
+          throw new Error(`Assinatura local não encontrada para asaas_subscription_id: ${payment.subscription}`)
         }
 
         // Criar registro do pagamento no banco
         const paymentInsert = {
-          subscription_id: subscription.id,
+          subscription_id: localSubscription.id, // Usar o ID local da assinatura
           asaas_payment_id: payment.id,
-          user_id: subscription.user_id,
+          user_id: localSubscription.user_id,
           value: payment.value,
           status: 'CONFIRMED', // Já marcar como confirmado
           billing_type: payment.billingType,
@@ -421,7 +417,7 @@ export class AsaasSubscriptionService {
             convertAsaasDateToUTC(payment.paymentDate || payment.clientPaymentDate || '') : 
             formatDateForDB(new Date()),
           description: payment.description,
-          external_reference: null,
+          external_reference: localSubscription.external_reference, // UUID do grupo selecionado
           invoice_url: payment.invoiceUrl,
           bank_slip_url: payment.bankSlipUrl,
           transaction_receipt_url: payment.transactionReceiptUrl
@@ -435,7 +431,8 @@ export class AsaasSubscriptionService {
 
         Logger.info('AsaasSubscriptionService', 'Pagamento criado e confirmado com sucesso', { 
           paymentId: payment.id, 
-          subscriptionId: subscription.id 
+          localSubscriptionId: localSubscription.id,
+          groupId: localSubscription.group_id
         })
       } else {
         // Se o pagamento já existe, apenas atualizar o status
@@ -552,64 +549,12 @@ export class AsaasSubscriptionService {
     }
   }
 
-  // Handler para SUBSCRIPTION_CREATED
+    // Handler para SUBSCRIPTION_CREATED - REMOVIDO
+  // A criação de assinatura local agora é feita diretamente na API após response do Asaas
   static async handleSubscriptionCreated(data: WebhookEvent): Promise<void> {
-    try {
-      Logger.info('AsaasSubscriptionService', 'Processando SUBSCRIPTION_CREATED', { 
-        subscriptionId: data.subscription?.id,
-        externalReference: data.subscription?.externalReference 
-      })
-
-      if (!data.subscription) {
-        throw new Error('Dados da assinatura não encontrados no webhook')
-      }
-
-      const subscription = data.subscription
-
-      // Se tem externalReference, extrair group_id
-      let groupId: string | undefined
-      if (subscription.externalReference && subscription.externalReference.startsWith('group_')) {
-        groupId = subscription.externalReference.replace('group_', '')
-        Logger.info('AsaasSubscriptionService', 'Assinatura vinculada ao grupo', { 
-          subscriptionId: subscription.id, 
-          groupId,
-          externalReference: subscription.externalReference 
-        })
-      }
-
-      // Atualizar assinatura existente com dados do Asaas
-      const updateData: any = {
-        status: subscription.status.toLowerCase(),
-        next_billing_date: convertAsaasDateToUTC(subscription.nextDueDate),
-        value: subscription.value,
-        billing_type: subscription.billingType,
-        cycle: subscription.cycle,
-        description: subscription.description,
-        external_reference: subscription.externalReference
-      }
-
-      // Se tem group_id, incluir na atualização
-      if (groupId) {
-        updateData.group_id = groupId
-      }
-
-      const { error: updateError } = await supabaseAdmin
-        .from('subscriptions')
-        .update(updateData)
-        .eq('asaas_subscription_id', subscription.id)
-
-      if (updateError) throw updateError
-
-      Logger.info('AsaasSubscriptionService', 'Assinatura atualizada com dados do Asaas', { 
-        subscriptionId: subscription.id,
-        groupId,
-        externalReference: subscription.externalReference 
-      })
-
-    } catch (error) {
-      Logger.error('AsaasSubscriptionService', 'Erro ao processar SUBSCRIPTION_CREATED', { error, data })
-      throw error
-    }
+    Logger.info('AsaasSubscriptionService', 'SUBSCRIPTION_CREATED ignorado - assinatura já criada localmente via API', {
+      subscriptionId: data.subscription?.id
+    })
   }
 
   // Handler para SUBSCRIPTION_UPDATED
@@ -622,23 +567,6 @@ export class AsaasSubscriptionService {
       }
 
       const subscription = data.subscription
-
-      // Log detalhado para debug
-      Logger.info('AsaasSubscriptionService', 'Dados da assinatura recebidos', {
-        subscriptionId: subscription.id,
-        status: subscription.status,
-        statusConverted: subscription.status.toLowerCase(),
-        nextDueDate: subscription.nextDueDate,
-        nextDueDateConverted: convertAsaasDateToUTC(subscription.nextDueDate),
-        // Log adicional para debug do status
-        statusType: typeof subscription.status,
-        statusLength: subscription.status?.length,
-        statusLowerCase: subscription.status?.toLowerCase(),
-        // Log adicional para debug da data
-        nextDueDateType: typeof subscription.nextDueDate,
-        nextDueDateLength: subscription.nextDueDate?.length,
-        nextDueDateConvertedType: typeof convertAsaasDateToUTC(subscription.nextDueDate)
-      })
 
       // Verificar se a assinatura existe antes de atualizar
       const { data: existingSubscription, error: checkError } = await supabaseAdmin
@@ -668,11 +596,8 @@ export class AsaasSubscriptionService {
         value: subscription.value,
         billing_type: subscription.billingType,
         cycle: subscription.cycle,
-        description: subscription.description,
-
+        description: subscription.description
       }
-
-      Logger.info('AsaasSubscriptionService', 'Dados para atualização', { updateData })
 
       const { error: updateError } = await supabaseAdmin
         .from('subscriptions')
@@ -796,37 +721,10 @@ export class AsaasSubscriptionService {
         return { canSelect: false, reason: 'Existe pagamento vencido' }
       }
 
-      // 2. CHEQUE SE NÃO TEM NENHUMA ASSINATURA ATIVA
-      const { data: activeSubscriptions, error: activeError } = await supabaseAdmin
-        .from('subscriptions')
-        .select('id, plan_id, group_id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-
-      if (activeError) throw activeError
-
-      if (!activeSubscriptions || activeSubscriptions.length === 0) {
-        // 3. CHEQUE SE NÃO TEM NENHUMA ASSINATURA
-        const { data: allSubscriptions, error: allError } = await supabaseAdmin
-          .from('subscriptions')
-          .select('id')
-          .eq('user_id', userId)
-
-        if (allError) throw allError
-
-        if (!allSubscriptions || allSubscriptions.length === 0) {
-          Logger.info('AsaasSubscriptionService', 'Usuário não possui nenhuma assinatura', { userId })
-          return { canSelect: false, reason: 'Nenhuma assinatura encontrada' }
-        } else {
-          Logger.info('AsaasSubscriptionService', 'Usuário não possui assinaturas ativas', { userId })
-          return { canSelect: false, reason: 'Nenhuma assinatura ativa encontrada' }
-        }
-      }
-
-      // Usuário pode selecionar novos grupos (cada grupo terá sua própria assinatura)
+      // Com o sistema de assinatura por grupo, usuário pode sempre selecionar novos grupos
+      // desde que não tenha pagamentos vencidos
       Logger.info('AsaasSubscriptionService', 'Usuário pode selecionar novos grupos', { 
-        userId, 
-        activeSubscriptions: activeSubscriptions.length
+        userId
       })
       return { canSelect: true }
 

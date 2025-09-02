@@ -188,6 +188,7 @@ export default function GroupManager() {
         body: JSON.stringify({
           action: 'createSubscriptionForGroup',
           groupId: selectedGroupForSubscription.id,
+          groupName: selectedGroupForSubscription.subject, // Enviar nome do grupo
           planId: plan.id
         })
       })
@@ -200,30 +201,22 @@ export default function GroupManager() {
       const result = await response.json()
 
       if (result.success) {
-        // Atualizar lista de grupos com status de seleção
-        setGroups(prevGroups =>
-          prevGroups.map(g =>
-            g.id === selectedGroupForSubscription.id ? { ...g, isSelected: true } : g
-          )
-        )
-
-        // Adicionar à lista de grupos selecionados
-        setSelectedGroups(prev => [result.groupSelection, ...prev])
-
         // Fechar modal
         setShowSubscriptionModal(false)
         setSelectedGroupForSubscription(null)
 
-        // Redirecionar para o pagamento se houver invoice_url
-        if (result.invoiceUrl) {
-          window.open(result.invoiceUrl, '_blank')
-        } else {
-          alert('Assinatura criada com sucesso! Verifique sua página de assinaturas para o link de pagamento.')
-        }
+        // Recarregar seleções de grupos imediatamente
+        await loadUserGroupSelections()
+
+        // Recarregar a página após um delay para mostrar as mudanças do webhook
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
       }
     } catch (error: any) {
       console.error('❌ Erro ao criar assinatura:', error)
-      alert('Erro ao criar assinatura. Tente novamente.')
+      const errorMessage = error.message || 'Erro ao criar assinatura. Tente novamente.'
+      alert(`Erro: ${errorMessage}`)
     } finally {
       setCreatingSubscription(false)
     }
@@ -552,11 +545,7 @@ export default function GroupManager() {
                     <div className="text-sm text-muted-foreground mt-1">
                       <span>{group.size} membros</span>
                     </div>
-                    {group.desc && (
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {group.desc}
-                      </p>
-                    )}
+
                   </div>
                   <div className="ml-4">
                     {!group.isSelected ? (
@@ -703,7 +692,9 @@ export default function GroupManager() {
                   className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
                 >
                   <div>
-                    <h4 className="font-medium">{selection.group_name}</h4>
+                    <h4 className="font-medium">
+                      {selection.group_name || 'Nome não disponível'}
+                    </h4>
                     <p className="text-sm text-muted-foreground">
                       Selecionado em {formatDateTime(selection.created_at)}
                     </p>
