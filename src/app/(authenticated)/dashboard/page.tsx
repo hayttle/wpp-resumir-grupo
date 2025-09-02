@@ -254,7 +254,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Link href="/groups">
-                <Button variant="outline">
+                <Button variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 hover:border-green-700">
                   <Users className="h-4 w-4 mr-2" />
                   Gerenciar Grupos
                 </Button>

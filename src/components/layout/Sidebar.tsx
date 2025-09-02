@@ -59,6 +59,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       href: '/summaries',
       icon: <FileText className="h-5 w-5" />,
       description: 'Visualizar resumos gerados'
+    },
+    {
+      label: 'Suporte',
+      href: '/support',
+      icon: <MessageCircle className="h-5 w-5" />,
+      description: 'Obter ajuda e suporte'
     }
   ]
 
