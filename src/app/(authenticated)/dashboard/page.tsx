@@ -234,7 +234,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <Link href="/instances">
-                <Button className="bg-green-600 hover:bg-green-700">
+                <Button variant="outline" className="border-green-600 text-green-600 hover:bg-green-50 hover:border-green-700">
                   <Smartphone className="h-4 w-4 mr-2" />
                   {displayStats.instanceStatus === 'open' ? 'Gerenciar Instância' : 'Configurar Instância'}
                 </Button>
