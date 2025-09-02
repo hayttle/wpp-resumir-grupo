@@ -1123,13 +1123,9 @@ export default function GroupManager() {
                       {/* Status da Assinatura */}
                       {selection.subscription ? (
                         <div className="space-y-4">
-                          {/* Card de Status da Assinatura */}
-                          <div className="p-4 rounded-lg border">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                {selection.group_name}
-                              </h4>
+                          {/* Status da Assinatura */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
                               <Badge
                                 className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
                                   selection.subscription.status === 'overdue' ? 'bg-red-100 text-red-800' :
@@ -1139,37 +1135,9 @@ export default function GroupManager() {
                               >
                                 {translateStatus(selection.subscription.status)}
                               </Badge>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-green-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">Valor</p>
-                                  <p className="font-semibold text-lg">
-                                    {formatCurrency(selection.subscription.value || 0)}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-green-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">Ciclo</p>
-                                  <p className="font-semibold">{translateCycle(selection.subscription.cycle || 'N/A')}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-green-600" />
-                                <div>
-                                  <p className="text-sm text-gray-600">Próximo Vencimento</p>
-                                  <p className="font-semibold text-sm">
-                                    {selection.subscription.next_billing_date ?
-                                      formatDate(selection.subscription.next_billing_date) :
-                                      'N/A'
-                                    }
-                                  </p>
-                                </div>
-                              </div>
+                              <span className="text-sm text-gray-600">
+                                {formatCurrency(selection.subscription.value || 0)} • {translateCycle(selection.subscription.cycle || 'N/A')}
+                              </span>
                             </div>
                           </div>
 
@@ -1211,14 +1179,11 @@ export default function GroupManager() {
                         </div>
                       ) : (
                         /* Sem Assinatura */
-                        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                           <div className="flex items-center gap-2 text-yellow-800">
                             <AlertCircle className="h-4 w-4" />
-                            <span className="font-medium">Sem assinatura ativa</span>
+                            <span className="font-medium text-sm">Sem assinatura ativa</span>
                           </div>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            Este grupo não possui uma assinatura vinculada. Remova e selecione novamente para criar uma nova assinatura.
-                          </p>
                         </div>
                       )}
                     </CardContent>
