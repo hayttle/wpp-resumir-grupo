@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Obter dados do request
     const body = await request.json()
-    const { action, instanceName, groupSelection, groupId, groupName, planId } = body
+    const { action, instanceName, groupSelection, groupId, groupName, planId, groupSize } = body
     
     if (!action) {
       return NextResponse.json(
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'checkPermissions') {
       return await checkUserPermissions(user.id)
     } else if (action === 'createSubscriptionForGroup') {
-      return await createSubscriptionForGroup(groupId, groupName, planId, user.id, supabase)
+      return await createSubscriptionForGroup(groupId, groupName, planId, user.id, supabase, groupSize)
     } else if (action === 'suspendGroup') {
       return await suspendGroup(groupId, user.id, supabase)
     } else if (action === 'reactivateGroup') {
@@ -453,7 +453,7 @@ async function checkUserPermissions(userId: string) {
 }
 
 // Função para criar assinatura para um grupo específico
-async function createSubscriptionForGroup(groupId: string, groupName: string, planId: string, userId: string, supabase: any) {
+async function createSubscriptionForGroup(groupId: string, groupName: string, planId: string, userId: string, supabase: any, groupSize?: number) {
   try {
     console.log('🔍 Criando assinatura para grupo:', { groupId, groupName, planId, userId })
 
@@ -517,7 +517,8 @@ async function createSubscriptionForGroup(groupId: string, groupName: string, pl
       group_name: groupName, // Nome do grupo enviado pelo frontend
       group_id: groupId,
       subscription_id: null, // Será preenchido pelo webhook
-      active: true
+      active: true,
+      size: groupSize || 0 // Usar número de membros recebido do frontend
     }
 
     console.log('🔍 Dados do grupo selecionado para salvar:', groupSelectionData)

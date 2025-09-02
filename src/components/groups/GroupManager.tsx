@@ -261,7 +261,8 @@ export default function GroupManager() {
           action: 'createSubscriptionForGroup',
           groupId: selectedGroupForSubscription.id,
           groupName: selectedGroupForSubscription.subject, // Enviar nome do grupo
-          planId: plan.id
+          planId: plan.id,
+          groupSize: selectedGroupForSubscription.size // Enviar número de membros
         })
       })
 
