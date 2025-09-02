@@ -1079,22 +1079,29 @@ export default function GroupManager() {
               <div className="grid gap-6">
                 {filteredSelectedGroups.map((selection) => (
                   <Card key={selection.id} className="overflow-hidden">
-                    {/* Header do Grupo */}
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        {/* Informações do Grupo */}
                         <div className="flex-1">
-                          <CardTitle className="text-lg flex items-center gap-2">
-                            <Users className="h-5 w-5 text-green-600" />
-                            {selection.group_name || 'Nome não disponível'}
-                          </CardTitle>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Users className="h-4 w-4 text-green-600" />
+                            <h3 className="font-semibold text-lg">
+                              {selection.group_name || 'Nome não disponível'}
+                            </h3>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-600">
+                            <span>X membros</span>
+                            <Badge
+                              variant={selection.active ? "default" : "secondary"}
+                              className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                            >
+                              {selection.active ? 'Ativo' : 'Inativo'}
+                            </Badge>
+                          </div>
                         </div>
+
+                        {/* Ações */}
                         <div className="flex items-center gap-2">
-                          <Badge
-                            variant={selection.active ? "default" : "secondary"}
-                            className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
-                          >
-                            {selection.active ? 'Ativo' : 'Inativo'}
-                          </Badge>
                           {selection.active ? (
                             <Button
                               onClick={() => handleRemoveGroup(selection)}
@@ -1103,7 +1110,7 @@ export default function GroupManager() {
                               className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
                             >
                               <Pause className="h-4 w-4 mr-1" />
-                              Suspender
+                              Pausar
                             </Button>
                           ) : (
                             <Button
@@ -1115,77 +1122,16 @@ export default function GroupManager() {
                               Reativar
                             </Button>
                           )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.location.href = '/subscriptions'}
+                          >
+                            <CreditCard className="h-4 w-4 mr-1" />
+                            Ver Assinatura
+                          </Button>
                         </div>
                       </div>
-                    </CardHeader>
-
-                    <CardContent className="pt-0">
-                      {/* Status da Assinatura */}
-                      {selection.subscription ? (
-                        <div className="space-y-4">
-                          {/* Status da Assinatura */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
-                                  selection.subscription.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                                    selection.subscription.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                                      'bg-yellow-100 text-yellow-800'
-                                  }`}
-                              >
-                                {translateStatus(selection.subscription.status)}
-                              </Badge>
-                              <span className="text-sm text-gray-600">
-                                {formatCurrency(selection.subscription.value || 0)} • {translateCycle(selection.subscription.cycle || 'N/A')}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Ações da Assinatura */}
-                          <div className="flex flex-wrap gap-2">
-                            {selection.subscription.status === 'active' && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
-                                onClick={() => handleCancelSubscription(selection.subscription!.id)}
-                              >
-                                <Pause className="h-4 w-4 mr-1" />
-                                Suspender Assinatura
-                              </Button>
-                            )}
-                            {selection.subscription.status === 'inactive' && (
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                                onClick={() => handleReactivateSubscription(selection.subscription!.id)}
-                              >
-                                <RefreshCw className="h-4 w-4 mr-1" />
-                                Reativar Assinatura
-                              </Button>
-                            )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="px-3 py-1"
-                              onClick={() => window.location.href = '/subscriptions'}
-                            >
-                              <CreditCard className="h-4 w-4 mr-1" />
-                              Ver Pagamentos
-                            </Button>
-                          </div>
-
-
-                        </div>
-                      ) : (
-                        /* Sem Assinatura */
-                        <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                          <div className="flex items-center gap-2 text-yellow-800">
-                            <AlertCircle className="h-4 w-4" />
-                            <span className="font-medium text-sm">Sem assinatura ativa</span>
-                          </div>
-                        </div>
-                      )}
                     </CardContent>
                   </Card>
                 ))}
