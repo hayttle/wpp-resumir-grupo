@@ -136,16 +136,40 @@ export class AsaasService {
   }
 
   // Atualizar assinatura existente
-  static async updateSubscription(subscriptionId: string, updateData: { status?: string }): Promise<any> {
+  static async updateSubscription(subscriptionId: string, updateData: { 
+    status?: string
+    nextDueDate?: string
+    billingType?: string
+  }): Promise<any> {
     try {
-      console.log('[ASAAS REQUEST] Atualizando assinatura:', { subscriptionId, updateData })
+      const url = `${this.baseUrl}/v3/subscriptions/${subscriptionId}`
+      const body = JSON.stringify(updateData)
+      
+      console.log('🚀 [ASAAS REQUEST] Atualizando assinatura:')
+      console.log('📍 URL:', url)
+      console.log('📦 Body:', body)
+      console.log('🔑 Headers:', {
+        'Content-Type': 'application/json',
+        'access_token': '***HIDDEN***'
+      })
+      
+      // Gerar comando curl para debug
+      const curlCommand = `curl --request PUT \\
+     --url ${url} \\
+     --header 'accept: application/json' \\
+     --header 'access_token: $ASAAS_ACCESS_TOKEN' \\
+     --header 'content-type: application/json' \\
+     --data '${body}'`
+      
+      console.log('🔧 [CURL COMMAND]:')
+      console.log(curlCommand)
       
       return this.request<any>(`/v3/subscriptions/${subscriptionId}`, {
         method: 'PUT',
-        body: JSON.stringify(updateData)
+        body: body
       })
     } catch (error) {
-      console.error('[ASAAS ERROR] Erro ao atualizar assinatura:', error)
+      console.error('❌ [ASAAS ERROR] Erro ao atualizar assinatura:', error)
       throw error
     }
   }

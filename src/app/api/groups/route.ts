@@ -7,6 +7,7 @@ import { AsaasSubscriptionService } from '@/lib/services/asaasSubscriptionServic
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY
 
+
 export async function POST(request: NextRequest) {
   try {
     // 1. Autenticar usuário
@@ -131,25 +132,98 @@ export async function GET(request: NextRequest) {
 
     console.log('✅ API Route Groups GET: Usuário autenticado:', user.id)
 
-    // 2. Buscar seleções de grupos do usuário
-    const { data: groupSelections, error } = await supabase
-      .from('group_selections')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    // 2. Verificar se deve incluir dados da assinatura
+    const { searchParams } = new URL(request.url)
+    const withSubscription = searchParams.get('withSubscription') === 'true'
 
-    if (error) {
-      console.error('❌ Erro ao buscar seleções de grupos:', error)
-      return NextResponse.json(
-        { error: 'Erro ao buscar seleções de grupos' },
-        { status: 500 }
+    if (withSubscription) {
+      // Buscar grupos com dados da assinatura
+      console.log('🔍 Buscando grupos com assinatura para usuário:', user.id)
+      
+      // Primeiro, buscar todos os grupos selecionados
+      const { data: groupSelections, error: selectionError } = await supabase
+        .from('group_selections')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (selectionError) {
+        console.error('❌ Erro ao buscar grupos selecionados:', selectionError)
+        return NextResponse.json(
+          { error: 'Erro ao buscar grupos' },
+          { status: 500 }
+        )
+      }
+
+      console.log('✅ Grupos selecionados encontrados:', groupSelections)
+
+      // Para cada grupo, buscar a assinatura e pagamentos
+      const groupSelectionsWithData = await Promise.all(
+        (groupSelections || []).map(async (group) => {
+          let subscription = null
+          let payments = []
+
+          if (group.subscription_id) {
+            // Buscar assinatura
+            const { data: subData, error: subError } = await supabase
+              .from('subscriptions')
+              .select('*')
+              .eq('id', group.subscription_id)
+              .single()
+
+            if (subError) {
+              console.error('❌ Erro ao buscar assinatura:', subError)
+            } else {
+              subscription = subData
+
+              // Buscar pagamentos da assinatura
+              const { data: paymentsData, error: paymentsError } = await supabase
+                .from('payments')
+                .select('*')
+                .eq('subscription_id', group.subscription_id)
+                .order('created_at', { ascending: false })
+
+              if (paymentsError) {
+                console.error('❌ Erro ao buscar pagamentos:', paymentsError)
+              } else {
+                payments = paymentsData || []
+              }
+            }
+          }
+
+          return {
+            ...group,
+            subscription,
+            payments
+          }
+        })
       )
-    }
 
-    return NextResponse.json({
-      success: true,
-      groupSelections: groupSelections || []
-    })
+      return NextResponse.json({
+        success: true,
+        groupSelections: groupSelectionsWithData
+      })
+    } else {
+      // Buscar apenas grupos selecionados (comportamento padrão)
+      const { data: groupSelections, error } = await supabase
+        .from('group_selections')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('❌ Erro ao buscar seleções de grupos:', error)
+        return NextResponse.json(
+          { error: 'Erro ao buscar seleções de grupos' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json({
+        success: true,
+        groupSelections: groupSelections || []
+      })
+    }
 
   } catch (error) {
     console.error('❌ Erro interno:', error)

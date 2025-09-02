@@ -51,13 +51,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       label: 'Meus Grupos',
       href: '/groups',
       icon: <Users className="h-5 w-5" />,
-      description: 'Gerenciar grupos monitorados'
-    },
-    {
-      label: 'Assinaturas',
-      href: '/subscriptions',
-      icon: <CreditCard className="h-5 w-5" />,
-      description: 'Gerenciar planos e assinaturas'
+      description: 'Gerenciar grupos e assinaturas'
     }
   ]
 

@@ -5,24 +5,58 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { RefreshCw, Users, Check, Plus, AlertCircle, Search } from 'lucide-react'
+import { RefreshCw, Users, Check, Plus, AlertCircle, Search, CreditCard, Calendar, DollarSign, MoreVertical, Eye, EyeOff, Trash2, Pause } from 'lucide-react'
 import { GroupService } from '@/lib/services/groupService'
 import { useInstanceStatus } from '@/hooks/useInstanceStatus'
 import { useAuth } from '@/contexts/AuthContext'
-import { WhatsAppGroup, GroupSelection, Plan } from '@/types/database'
-import { formatDateTime } from '@/lib/utils/formatters'
+import { WhatsAppGroup, GroupSelection, Plan, Subscription, Payment } from '@/types/database'
+import { formatDateTime, formatCurrency, formatDate } from '@/lib/utils/formatters'
 import { SubscriptionConfirmationModal } from '@/components/ui/subscription-confirmation-modal'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { useToast } from '@/components/ui/toast'
+
+// Funções helper para traduzir status e ciclos
+const translateStatus = (status: string) => {
+  const statusMap: { [key: string]: string } = {
+    'active': 'Ativo',
+    'inactive': 'Inativo',
+    'overdue': 'Vencido',
+    'pending': 'Pendente',
+    'CONFIRMED': 'Confirmado',
+    'RECEIVED': 'Recebido',
+    'PENDING': 'Pendente',
+    'OVERDUE': 'Vencido',
+    'CANCELLED': 'Cancelado'
+  }
+  return statusMap[status] || status
+}
+
+const translateCycle = (cycle: string) => {
+  const cycleMap: { [key: string]: string } = {
+    'MONTHLY': 'Mensal',
+    'WEEKLY': 'Semanal',
+    'YEARLY': 'Anual',
+    'DAILY': 'Diário'
+  }
+  return cycleMap[cycle] || cycle
+}
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
   canSelect: boolean
 }
 
+interface GroupWithSubscription extends GroupSelection {
+  subscription?: Subscription
+  payments?: Payment[]
+}
+
 export default function GroupManager() {
   const { user } = useAuth()
   const { instance, updateInstanceStatus } = useInstanceStatus()
+  const { addToast } = useToast()
   const [groups, setGroups] = useState<GroupWithSelectionStatus[]>([])
-  const [selectedGroups, setSelectedGroups] = useState<GroupSelection[]>([])
+  const [selectedGroups, setSelectedGroups] = useState<GroupWithSubscription[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchingGroups, setFetchingGroups] = useState(false)
   const [filterText, setFilterText] = useState('')
@@ -38,10 +72,17 @@ export default function GroupManager() {
 
   const loadUserGroupSelections = useCallback(async () => {
     try {
-      const groupSelections = await GroupService.getUserGroupSelections()
-      setSelectedGroups(groupSelections)
+      // Tentar primeiro com dados de assinatura
+      try {
+        const groupSelections = await GroupService.getUserGroupSelectionsWithSubscription()
+        setSelectedGroups(groupSelections)
+      } catch (error) {
+        // Fallback: carregar apenas grupos selecionados
+        const groupSelections = await GroupService.getUserGroupSelections()
+        setSelectedGroups(groupSelections)
+      }
     } catch (error) {
-      console.error('❌ Erro ao carregar seleções de grupos:', error)
+      // Erro silencioso - não mostrar toast para erro de carregamento inicial
     } finally {
       setLoading(false)
     }
@@ -56,6 +97,19 @@ export default function GroupManager() {
   const [selectedGroupForSubscription, setSelectedGroupForSubscription] = useState<WhatsAppGroup | null>(null)
   const [plan, setPlan] = useState<Plan | null>(null)
   const [creatingSubscription, setCreatingSubscription] = useState(false)
+
+  // Estados para o modal de cancelamento
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [subscriptionToCancel, setSubscriptionToCancel] = useState<string | null>(null)
+  const [cancellingSubscription, setCancellingSubscription] = useState(false)
+
+  // Estados para o modal de reativação
+  const [showReactivateModal, setShowReactivateModal] = useState(false)
+  const [subscriptionToReactivate, setSubscriptionToReactivate] = useState<string | null>(null)
+  const [reactivatingSubscription, setReactivatingSubscription] = useState(false)
+
+  // Estado para controlar quais assinaturas têm pagamentos visíveis
+  const [visiblePayments, setVisiblePayments] = useState<Set<string>>(new Set())
 
   // Função para recalcular a capacidade de seleção de grupos baseada no estado local
   const recalculateSelectionCapability = useCallback(() => {
@@ -109,7 +163,7 @@ export default function GroupManager() {
           setSelectionReason(result.reason)
         }
       } catch (error) {
-        console.error('❌ Erro na checagem inicial de acesso:', error)
+        // Erro silencioso na checagem inicial
       }
     }
 
@@ -142,8 +196,11 @@ export default function GroupManager() {
 
 
     } catch (error) {
-      console.error('❌ Erro ao buscar grupos:', error)
-      alert('Erro ao buscar grupos. Verifique se sua instância está conectada.')
+      addToast({
+        type: 'error',
+        title: 'Erro ao buscar grupos',
+        message: 'Verifique se sua instância está conectada.'
+      })
     } finally {
       setFetchingGroups(false)
     }
@@ -159,7 +216,7 @@ export default function GroupManager() {
         setPlan(data.plans[0]) // Usar o primeiro plano disponível
       }
     } catch (error) {
-      console.error('❌ Erro ao buscar plano:', error)
+      // Erro silencioso ao buscar plano
     }
   }
 
@@ -207,16 +264,15 @@ export default function GroupManager() {
 
         // Recarregar seleções de grupos imediatamente
         await loadUserGroupSelections()
-
-        // Recarregar a página após um delay para mostrar as mudanças do webhook
-        setTimeout(() => {
-          window.location.reload()
-        }, 2000)
       }
     } catch (error: any) {
-      console.error('❌ Erro ao criar assinatura:', error)
       const errorMessage = error.message || 'Erro ao criar assinatura. Tente novamente.'
-      alert(`Erro: ${errorMessage}`)
+
+      addToast({
+        type: 'error',
+        title: 'Erro ao criar assinatura',
+        message: errorMessage
+      })
     } finally {
       setCreatingSubscription(false)
     }
@@ -245,11 +301,147 @@ export default function GroupManager() {
         )
 
       } else {
-        alert('Erro ao desselecionar grupo. Tente novamente.')
+        addToast({
+          type: 'error',
+          title: 'Erro ao desselecionar grupo',
+          message: 'Tente novamente.'
+        })
       }
     } catch (error) {
-      console.error('❌ Erro ao desselecionar grupo:', error)
-      alert('Erro ao desselecionar grupo. Tente novamente.')
+      addToast({
+        type: 'error',
+        title: 'Erro ao desselecionar grupo',
+        message: 'Tente novamente.'
+      })
+    }
+  }
+
+  const handleCancelSubscription = (subscriptionId: string) => {
+    setSubscriptionToCancel(subscriptionId)
+    setShowCancelModal(true)
+  }
+
+  const handleReactivateSubscription = (subscriptionId: string) => {
+    setSubscriptionToReactivate(subscriptionId)
+    setShowReactivateModal(true)
+  }
+
+  const confirmCancelSubscription = async () => {
+    if (!subscriptionToCancel) return
+
+    try {
+      setCancellingSubscription(true)
+
+      const response = await fetch(`/api/subscriptions/${subscriptionToCancel}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao cancelar assinatura')
+      }
+
+      // Fechar modal e limpar estado
+      setShowCancelModal(false)
+      setSubscriptionToCancel(null)
+
+      // Recarregar lista de grupos selecionados para atualizar status
+      await loadUserGroupSelections()
+
+      // Mostrar toast de sucesso
+      addToast({
+        type: 'success',
+        title: 'Assinatura cancelada!',
+        message: 'A assinatura foi cancelada com sucesso.'
+      })
+    } catch (error) {
+      // Mostrar toast de erro
+      addToast({
+        type: 'error',
+        title: 'Erro ao cancelar assinatura',
+        message: (error as Error).message
+      })
+    } finally {
+      setCancellingSubscription(false)
+    }
+  }
+
+  const confirmReactivateSubscription = async () => {
+    if (!subscriptionToReactivate) return
+
+    try {
+      setReactivatingSubscription(true)
+
+      const response = await fetch(`/api/subscriptions/${subscriptionToReactivate}/reactivate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user?.id
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao reativar assinatura')
+      }
+
+      // Fechar modal e limpar estado
+      setShowReactivateModal(false)
+      setSubscriptionToReactivate(null)
+
+      // Recarregar lista de grupos selecionados para atualizar status
+      await loadUserGroupSelections()
+
+      // Mostrar toast de sucesso
+      addToast({
+        type: 'success',
+        title: 'Assinatura reativada!',
+        message: 'A assinatura foi reativada com sucesso.'
+      })
+    } catch (error) {
+      // Mostrar toast de erro
+      addToast({
+        type: 'error',
+        title: 'Erro ao reativar assinatura',
+        message: (error as Error).message
+      })
+    } finally {
+      setReactivatingSubscription(false)
+    }
+  }
+
+  const handleTogglePayments = (subscriptionId: string) => {
+    setVisiblePayments(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(subscriptionId)) {
+        newSet.delete(subscriptionId)
+      } else {
+        newSet.add(subscriptionId)
+      }
+      return newSet
+    })
+  }
+
+  const handlePayPayment = (payment: Payment) => {
+    // Verificar se o pagamento tem invoice_url
+    if (payment.invoice_url) {
+      // Abrir link de pagamento em nova aba
+      window.open(payment.invoice_url, '_blank')
+    } else {
+      // TODO: Implementar geração de link de pagamento
+      addToast({
+        type: 'warning',
+        title: 'Link de pagamento não disponível',
+        message: 'Entre em contato com o suporte.'
+      })
     }
   }
 
@@ -481,16 +673,16 @@ export default function GroupManager() {
                     ⚠️ Existe pagamento vencido
                   </span>
                   <p className="text-xs text-red-600 mt-1">
-                    Para acessar os grupos, regularize sua situação na página "Assinaturas"
+                    Para acessar os grupos, regularize sua situação de pagamento
                   </p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.location.href = '/subscriptions'}
+                  onClick={() => window.location.href = '/groups'}
                   className="ml-2 border-red-300 text-red-700 hover:bg-red-100"
                 >
-                  Ver Assinaturas
+                  Ver Grupos
                 </Button>
               </div>
             </div>
@@ -679,40 +871,277 @@ export default function GroupManager() {
       {selectedGroups.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Grupos Selecionados ({selectedGroups.length})</CardTitle>
-            <CardDescription>
-              Estes grupos serão monitorados para resumos automáticos
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {selectedGroups.map((selection) => (
-                <div
-                  key={selection.id}
-                  className="flex items-center justify-between p-3 border rounded-lg bg-green-50"
-                >
-                  <div>
-                    <h4 className="font-medium">
-                      {selection.group_name || 'Nome não disponível'}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      Selecionado em {formatDateTime(selection.created_at)}
-                    </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Grupos Selecionados ({selectedGroups.length})
+                </CardTitle>
+                <CardDescription>
+                  Estes grupos serão monitorados para resumos automáticos
+                </CardDescription>
+              </div>
+              {/* Resumo das Assinaturas e Ações */}
+              <div className="flex items-center gap-4">
+                <div className="flex gap-4 text-sm">
+                  <div className="text-center">
+                    <div className="font-semibold text-green-600">
+                      {selectedGroups.filter(g => g.subscription?.status === 'active').length}
+                    </div>
+                    <div className="text-gray-500">Ativas</div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Badge className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                      {selection.active ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                    <Button
-                      onClick={() => deselectGroup(selection)}
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:bg-red-50 hover:text-red-700"
-                    >
-                      Remover
-                    </Button>
+                  <div className="text-center">
+                    <div className="font-semibold text-red-600">
+                      {selectedGroups.filter(g => g.subscription?.status === 'overdue').length}
+                    </div>
+                    <div className="text-gray-500">Vencidas</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-gray-600">
+                      {selectedGroups.filter(g => !g.subscription).length}
+                    </div>
+                    <div className="text-gray-500">Sem Assinatura</div>
                   </div>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadUserGroupSelections}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Atualizar
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6">
+              {selectedGroups.map((selection) => (
+                <Card key={selection.id} className="overflow-hidden">
+                  {/* Header do Grupo */}
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <Users className="h-5 w-5 text-green-600" />
+                          {selection.group_name || 'Nome não disponível'}
+                        </CardTitle>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={selection.active ? "default" : "secondary"}
+                          className={selection.active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
+                        >
+                          {selection.active ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                        <Button
+                          onClick={() => deselectGroup(selection)}
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Remover
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="pt-0">
+                    {/* Status da Assinatura */}
+                    {selection.subscription ? (
+                      <div className="space-y-4">
+                        {/* Card de Status da Assinatura */}
+                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              Assinatura Ativa
+                            </h4>
+                            <Badge
+                              className={`${selection.subscription.status === 'active' ? 'bg-green-100 text-green-800' :
+                                selection.subscription.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                                  selection.subscription.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                }`}
+                            >
+                              {translateStatus(selection.subscription.status)}
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              <div>
+                                <p className="text-sm text-gray-600">Valor</p>
+                                <p className="font-semibold text-lg">
+                                  {formatCurrency(selection.subscription.value || 0)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <div>
+                                <p className="text-sm text-gray-600">Ciclo</p>
+                                <p className="font-semibold">{translateCycle(selection.subscription.cycle || 'N/A')}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-green-600" />
+                              <div>
+                                <p className="text-sm text-gray-600">Próximo Vencimento</p>
+                                <p className="font-semibold text-sm">
+                                  {selection.subscription.next_billing_date ?
+                                    formatDate(selection.subscription.next_billing_date) :
+                                    'N/A'
+                                  }
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ações da Assinatura */}
+                        <div className="flex flex-wrap gap-2">
+                          {selection.subscription.status === 'active' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-orange-600 hover:bg-orange-50 border-orange-200"
+                              onClick={() => handleCancelSubscription(selection.subscription!.id)}
+                            >
+                              <Pause className="h-4 w-4 mr-1" />
+                              Cancelar Assinatura
+                            </Button>
+                          )}
+                          {selection.subscription.status === 'inactive' && (
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                              onClick={() => handleReactivateSubscription(selection.subscription!.id)}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                              Reativar Assinatura
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                            onClick={() => handleTogglePayments(selection.subscription!.id)}
+                          >
+                            {visiblePayments.has(selection.subscription!.id) ? (
+                              <EyeOff className="h-4 w-4 mr-1" />
+                            ) : (
+                              <Eye className="h-4 w-4 mr-1" />
+                            )}
+                            {visiblePayments.has(selection.subscription!.id) ? 'Ocultar Cobranças' : 'Ver Cobranças'}
+                          </Button>
+                        </div>
+
+                        {/* Cobranças - Toggle */}
+                        {selection.payments && selection.payments.length > 0 && visiblePayments.has(selection.subscription!.id) && (
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <h5 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                              <CreditCard className="h-4 w-4" />
+                              Cobranças ({selection.payments.length})
+                            </h5>
+
+                            {/* Cabeçalho da tabela */}
+                            <div className="bg-white rounded-lg border overflow-hidden">
+                              <div className="grid grid-cols-12 gap-4 p-3 bg-gray-100 border-b text-xs font-semibold text-gray-600">
+                                <div className="col-span-2">Data</div>
+                                <div className="col-span-3">Descrição</div>
+                                <div className="col-span-2">Valor</div>
+                                <div className="col-span-2">Status</div>
+                                <div className="col-span-3">Ações</div>
+                              </div>
+
+                              {/* Linhas dos pagamentos */}
+                              <div className="divide-y">
+                                {selection.payments.map((payment) => (
+                                  <div key={payment.id} className="grid grid-cols-12 gap-4 p-3 items-center">
+                                    {/* Data */}
+                                    <div className="col-span-2">
+                                      <p className="text-sm font-medium">
+                                        {payment.payment_date ?
+                                          formatDate(payment.payment_date) :
+                                          formatDate(payment.due_date)
+                                        }
+                                      </p>
+                                    </div>
+
+                                    {/* Descrição */}
+                                    <div className="col-span-3">
+                                      <p className="text-sm text-gray-700">
+                                        {payment.description || 'Pagamento da assinatura'}
+                                      </p>
+                                    </div>
+
+                                    {/* Valor */}
+                                    <div className="col-span-2">
+                                      <span className="font-semibold text-base">{formatCurrency(payment.value)}</span>
+                                    </div>
+
+                                    {/* Status */}
+                                    <div className="col-span-2">
+                                      <Badge
+                                        className={`text-xs ${payment.status === 'CONFIRMED' || payment.status === 'RECEIVED' ? 'bg-green-100 text-green-800' :
+                                          payment.status === 'OVERDUE' ? 'bg-red-100 text-red-800' :
+                                            payment.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                              'bg-gray-100 text-gray-800'
+                                          }`}
+                                      >
+                                        {translateStatus(payment.status)}
+                                      </Badge>
+                                    </div>
+
+                                    {/* Ações */}
+                                    <div className="col-span-3">
+                                      {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          className="text-xs px-3 py-1 h-7"
+                                          onClick={() => handlePayPayment(payment)}
+                                        >
+                                          PAGAR
+                                        </Button>
+                                      ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') && payment.transaction_receipt_url ? (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-300 text-xs px-3 py-1 h-7"
+                                          onClick={() => window.open(payment.transaction_receipt_url, '_blank')}
+                                        >
+                                          Ver comprovante
+                                        </Button>
+                                      ) : (
+                                        <span className="text-xs text-gray-400">-</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Sem Assinatura */
+                      <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                        <div className="flex items-center gap-2 text-yellow-800">
+                          <AlertCircle className="h-4 w-4" />
+                          <span className="font-medium">Sem assinatura ativa</span>
+                        </div>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          Este grupo não possui uma assinatura vinculada. Remova e selecione novamente para criar uma nova assinatura.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </CardContent>
@@ -746,6 +1175,47 @@ export default function GroupManager() {
           loading={creatingSubscription}
         />
       )}
+
+      {/* Modal de Confirmação de Cancelamento */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        onClose={() => {
+          setShowCancelModal(false)
+          setSubscriptionToCancel(null)
+        }}
+        onConfirm={confirmCancelSubscription}
+        title="Cancelar Assinatura"
+        message={`Tem certeza que deseja cancelar esta assinatura?
+
+Ao cancelar:
+• A assinatura será suspensa
+• Não serão gerados novos pagamentos
+• O grupo continuará ativo até o próximo vencimento`}
+        confirmText="Sim, Cancelar"
+        cancelText="Manter Ativa"
+        isLoading={cancellingSubscription}
+      />
+
+      {/* Modal de Confirmação de Reativação */}
+      <ConfirmModal
+        isOpen={showReactivateModal}
+        onClose={() => {
+          setShowReactivateModal(false)
+          setSubscriptionToReactivate(null)
+        }}
+        onConfirm={confirmReactivateSubscription}
+        title="Reativar Assinatura"
+        message={`Tem certeza que deseja reativar esta assinatura?
+
+Ao reativar:
+• A assinatura voltará a gerar pagamentos
+• O próximo vencimento será hoje
+• O grupo continuará ativo normalmente`}
+        confirmText="Sim, Reativar"
+        cancelText="Manter Cancelada"
+        isLoading={reactivatingSubscription}
+      />
     </div>
   )
 }
+

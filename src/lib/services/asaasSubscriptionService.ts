@@ -106,6 +106,75 @@ export class AsaasSubscriptionService {
     }
   }
 
+  // Reativar assinatura (reativar no Asaas)
+  static async reactivateSubscription(subscriptionId: string): Promise<void> {
+    try {
+      Logger.info('AsaasSubscriptionService', 'Reativando assinatura', { subscriptionId })
+
+      // Buscar assinatura para obter o asaas_subscription_id
+      const { data: subscription, error: subError } = await supabaseAdmin
+        .from('subscriptions')
+        .select('asaas_subscription_id, status')
+        .eq('id', subscriptionId)
+        .single()
+
+      if (subError) {
+        Logger.error('AsaasSubscriptionService', 'Erro ao buscar assinatura', { error: subError, subscriptionId })
+        throw subError
+      }
+      if (!subscription) {
+        Logger.error('AsaasSubscriptionService', 'Assinatura não encontrada', { subscriptionId })
+        throw new Error('Assinatura não encontrada')
+      }
+      if (!subscription.asaas_subscription_id) {
+        Logger.error('AsaasSubscriptionService', 'Assinatura sem ID do Asaas', { subscriptionId, subscription })
+        throw new Error('Assinatura não possui ID do Asaas')
+      }
+      
+      Logger.info('AsaasSubscriptionService', 'Assinatura encontrada', { 
+        subscriptionId, 
+        asaasSubscriptionId: subscription.asaas_subscription_id,
+        currentStatus: subscription.status 
+      })
+
+      // Calcular próxima data de pagamento (hoje + 1 dia)
+      const tomorrow = new Date()
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const nextDueDate = tomorrow.toISOString().split('T')[0] // YYYY-MM-DD
+      
+      const updatePayload = { 
+        status: 'ACTIVE',
+        nextDueDate: nextDueDate
+      }
+      
+      Logger.info('AsaasSubscriptionService', 'Payload de reativação', { 
+        subscriptionId, 
+        asaasSubscriptionId: subscription.asaas_subscription_id,
+        updatePayload 
+      })
+
+      // Reativar assinatura no Asaas com próxima data de pagamento
+      await AsaasService.updateSubscription(subscription.asaas_subscription_id, updatePayload)
+
+      // Atualizar status local para active (consistente com o webhook)
+      const { error: updateError } = await supabaseAdmin
+        .from('subscriptions')
+        .update({ 
+          status: 'active',
+          next_billing_date: nextDueDate
+        })
+        .eq('id', subscriptionId)
+
+      if (updateError) throw updateError
+
+      Logger.info('AsaasSubscriptionService', 'Assinatura reativada com sucesso', { subscriptionId })
+
+    } catch (error) {
+      Logger.error('AsaasSubscriptionService', 'Erro ao reativar assinatura', { error, subscriptionId })
+      throw error
+    }
+  }
+
   // Criar assinatura usando endpoint do Asaas
   // Criar assinatura para um grupo específico
   static async createSubscriptionForGroup(

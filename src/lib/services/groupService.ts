@@ -1,5 +1,5 @@
 import { supabase } from '../supabase'
-import { WhatsAppGroup, GroupSelection, GroupSelectionInsert, GroupSelectionUpdate } from '@/types/database'
+import { WhatsAppGroup, GroupSelection, GroupSelectionInsert, GroupSelectionUpdate, Subscription, Payment } from '@/types/database'
 
 interface GroupWithSelectionStatus extends WhatsAppGroup {
   isSelected: boolean
@@ -10,6 +10,11 @@ interface FetchGroupsResult {
   groups: GroupWithSelectionStatus[]
   canSelectNewGroups: boolean
   reason?: string
+}
+
+interface GroupWithSubscription extends GroupSelection {
+  subscription?: Subscription
+  payments?: Payment[]
 }
 
 export class GroupService {
@@ -101,6 +106,25 @@ export class GroupService {
       return result.groupSelections || []
     } catch (error) {
       console.error('❌ GroupService: Erro ao buscar seleções de grupos:', error)
+      return []
+    }
+  }
+
+  // Buscar seleções de grupos com dados da assinatura vinculada
+  static async getUserGroupSelectionsWithSubscription(): Promise<GroupWithSubscription[]> {
+    try {
+      const response = await fetch('/api/groups?withSubscription=true')
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error('❌ Erro ao buscar seleções de grupos com assinatura:', errorData)
+        return []
+      }
+
+      const result = await response.json()
+      return result.groupSelections || []
+    } catch (error) {
+      console.error('❌ GroupService: Erro ao buscar seleções de grupos com assinatura:', error)
       return []
     }
   }
