@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { useToast } from '@/components/ui/use-toast'
+import { useToast } from '@/components/ui/toast'
 import { SummaryService, SummaryWithGroup } from '@/lib/services/summaryService'
 import { GroupService } from '@/lib/services/groupService'
 import { formatDate } from '@/lib/utils/formatters'
@@ -31,7 +31,7 @@ export default function SummariesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalSummaries, setTotalSummaries] = useState(0)
-  const { toast } = useToast()
+  const { addToast } = useToast()
 
   const limit = 10
 
@@ -65,10 +65,10 @@ export default function SummariesPage() {
       setCurrentPage(page)
     } catch (error) {
       console.error('Erro ao carregar resumos:', error)
-      toast({
+      addToast({
+        type: 'error',
         title: 'Erro',
-        description: 'Erro ao carregar resumos',
-        variant: 'destructive'
+        message: 'Erro ao carregar resumos'
       })
     } finally {
       setLoading(false)
