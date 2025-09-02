@@ -141,9 +141,9 @@ export interface Summary {
   group_selection_id: string
   content: string
   message_count: number
-  date: string
+  date: string // timestamp - data e hora do resumo
   sent: boolean
-  created_at: string
+  created_at: string // timestamp - data e hora de criação do registro
 }
 
 // Tipos para inserção (sem campos auto-gerados)

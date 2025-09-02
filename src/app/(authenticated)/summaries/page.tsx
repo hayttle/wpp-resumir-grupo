@@ -286,7 +286,7 @@ export default function SummariesPage() {
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-4 w-4" />
-                        <span>{formatDate(summary.date)}</span>
+                        <span>{formatDateTime(summary.date)}</span>
                       </div>
                       <div className="flex items-center space-x-1">
                         <MessageSquare className="h-4 w-4" />

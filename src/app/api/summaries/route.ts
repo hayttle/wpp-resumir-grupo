@@ -67,18 +67,22 @@ export async function GET(request: NextRequest) {
 
     // Filtrar por data se especificado
     if (dateFilter && dateFilter !== 'all') {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const now = new Date()
       
       if (dateFilter === 'today') {
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        query = query.gte('date', today.toISOString().split('T')[0])
-        query = query.lt('date', tomorrow.toISOString().split('T')[0])
+        const todayStart = new Date(now)
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(now)
+        todayEnd.setHours(23, 59, 59, 999)
+        
+        query = query.gte('date', todayStart.toISOString())
+        query = query.lte('date', todayEnd.toISOString())
       } else if (dateFilter === 'last_7_days') {
-        const sevenDaysAgo = new Date(today)
+        const sevenDaysAgo = new Date(now)
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-        query = query.gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        sevenDaysAgo.setHours(0, 0, 0, 0)
+        
+        query = query.gte('date', sevenDaysAgo.toISOString())
       }
     }
 
@@ -104,18 +108,22 @@ export async function GET(request: NextRequest) {
 
     // Aplicar filtro de data na contagem também
     if (dateFilter && dateFilter !== 'all') {
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
+      const now = new Date()
       
       if (dateFilter === 'today') {
-        const tomorrow = new Date(today)
-        tomorrow.setDate(tomorrow.getDate() + 1)
-        countQuery = countQuery.gte('date', today.toISOString().split('T')[0])
-        countQuery = countQuery.lt('date', tomorrow.toISOString().split('T')[0])
+        const todayStart = new Date(now)
+        todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(now)
+        todayEnd.setHours(23, 59, 59, 999)
+        
+        countQuery = countQuery.gte('date', todayStart.toISOString())
+        countQuery = countQuery.lte('date', todayEnd.toISOString())
       } else if (dateFilter === 'last_7_days') {
-        const sevenDaysAgo = new Date(today)
+        const sevenDaysAgo = new Date(now)
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-        countQuery = countQuery.gte('date', sevenDaysAgo.toISOString().split('T')[0])
+        sevenDaysAgo.setHours(0, 0, 0, 0)
+        
+        countQuery = countQuery.gte('date', sevenDaysAgo.toISOString())
       }
     }
 
