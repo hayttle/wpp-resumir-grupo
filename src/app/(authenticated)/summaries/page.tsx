@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast'
 import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { SummaryService, SummaryWithGroup } from '@/lib/services/summaryService'
 import { GroupService } from '@/lib/services/groupService'
-import { formatDate } from '@/lib/utils/formatters'
+import { formatDate, formatDateTime } from '@/lib/utils/formatters'
 import {
   Search,
   Calendar,
@@ -282,9 +282,6 @@ export default function SummariesPage() {
                       <span className="font-semibold text-gray-900">
                         {summary.group_selections.group_name}
                       </span>
-                      <Badge variant={summary.sent ? 'default' : 'secondary'}>
-                        {summary.sent ? 'Enviado' : 'Pendente'}
-                      </Badge>
                     </div>
                     <div className="flex items-center space-x-4 text-sm text-gray-600">
                       <div className="flex items-center space-x-1">
@@ -295,15 +292,13 @@ export default function SummariesPage() {
                         <MessageSquare className="h-4 w-4" />
                         <span>{summary.message_count} mensagens</span>
                       </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-4 w-4" />
+                        <span>Criado em {formatDateTime(summary.created_at)}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {summary.sent && (
-                      <div className="flex items-center space-x-1 text-green-600">
-                        <Send className="h-4 w-4" />
-                        <span className="text-sm font-medium">Enviado</span>
-                      </div>
-                    )}
                     <Button
                       variant="outline"
                       size="sm"

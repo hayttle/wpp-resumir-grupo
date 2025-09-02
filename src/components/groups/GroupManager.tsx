@@ -1022,32 +1022,6 @@ export default function GroupManager() {
                   Estes grupos serão monitorados para resumos automáticos
                 </CardDescription>
               </div>
-              {/* Resumo dos Status dos Grupos */}
-              <div className="flex items-center gap-4">
-                <div className="flex gap-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-semibold text-green-600">
-                      {selectedGroups.filter(g => g.active).length}
-                    </div>
-                    <div className="text-gray-500">Ativos</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-600">
-                      {selectedGroups.filter(g => !g.active).length}
-                    </div>
-                    <div className="text-gray-500">Inativos</div>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={loadUserGroupSelections}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Atualizar
-                </Button>
-              </div>
             </div>
           </CardHeader>
           <CardContent>
