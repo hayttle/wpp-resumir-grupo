@@ -284,7 +284,7 @@ export default function SubscriptionsPage() {
                                       size="sm"
                                       variant="destructive"
                                       onClick={() => handlePayPayment(payment)}
-                                      className="text-xs"
+                                      className="text-xs h-7 px-2"
                                     >
                                       <PayIcon className="h-3 w-3 mr-1" />
                                       Pagar
@@ -294,7 +294,7 @@ export default function SubscriptionsPage() {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => handleViewReceipt(payment)}
-                                      className="text-xs"
+                                      className="text-xs h-7 px-2"
                                     >
                                       <ExternalLink className="h-3 w-3 mr-1" />
                                       Ver Comprovante
