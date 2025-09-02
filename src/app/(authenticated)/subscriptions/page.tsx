@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { CreditCard, Calendar, DollarSign, Search, AlertCircle, CheckCircle, Clock, ExternalLink, Users } from 'lucide-react'
+import { CreditCard, Calendar, DollarSign, Search, AlertCircle, CheckCircle, Clock, ExternalLink, Users, CreditCard as PayIcon } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/components/ui/toast'
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'
@@ -286,6 +286,7 @@ export default function SubscriptionsPage() {
                                       onClick={() => handlePayPayment(payment)}
                                       className="text-xs"
                                     >
+                                      <PayIcon className="h-3 w-3 mr-1" />
                                       Pagar
                                     </Button>
                                   ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') ? (
