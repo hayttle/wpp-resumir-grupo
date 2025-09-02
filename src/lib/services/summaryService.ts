@@ -20,6 +20,7 @@ export interface SummariesResponse {
 
 export interface SummaryFilters {
   groupId?: string
+  dateFilter?: 'all' | 'today' | 'last_7_days'
   page?: number
   limit?: number
 }
@@ -30,6 +31,9 @@ export class SummaryService {
     
     if (filters.groupId) {
       params.append('group_id', filters.groupId)
+    }
+    if (filters.dateFilter) {
+      params.append('date_filter', filters.dateFilter)
     }
     if (filters.page) {
       params.append('page', filters.page.toString())

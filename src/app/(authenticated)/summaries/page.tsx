@@ -30,6 +30,7 @@ export default function SummariesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedGroup, setSelectedGroup] = useState<string>('all')
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalSummaries, setTotalSummaries] = useState(0)
@@ -59,6 +60,7 @@ export default function SummariesPage() {
       setLoading(true)
       const filters = {
         groupId: selectedGroup === 'all' ? undefined : selectedGroup,
+        dateFilter: selectedDateFilter === 'all' ? undefined : selectedDateFilter as 'today' | 'last_7_days',
         page,
         limit
       }
@@ -82,7 +84,7 @@ export default function SummariesPage() {
 
   useEffect(() => {
     loadSummaries(1)
-  }, [selectedGroup])
+  }, [selectedGroup, selectedDateFilter])
 
   // Filtrar resumos por termo de busca
   const filteredSummaries = summaries.filter(summary => {
@@ -105,6 +107,7 @@ export default function SummariesPage() {
   const resetFilters = () => {
     setSearchTerm('')
     setSelectedGroup('all')
+    setSelectedDateFilter('all')
     setCurrentPage(1)
   }
 
@@ -219,6 +222,19 @@ export default function SummariesPage() {
               </select>
             </div>
 
+            {/* Filtro por data */}
+            <div className="sm:w-48">
+              <select
+                value={selectedDateFilter}
+                onChange={(e) => setSelectedDateFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Todas as datas</option>
+                <option value="today">Hoje</option>
+                <option value="last_7_days">Últimos 7 dias</option>
+              </select>
+            </div>
+
             {/* Botão resetar */}
             <Button
               variant="outline"
@@ -242,13 +258,13 @@ export default function SummariesPage() {
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-16 w-16 text-gray-300 mb-4" />
               <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                {searchTerm || selectedGroup !== 'all'
+                {searchTerm || selectedGroup !== 'all' || selectedDateFilter !== 'all'
                   ? 'Nenhum resumo encontrado'
                   : 'Nenhum resumo disponível'
                 }
               </h3>
               <p className="text-gray-500 text-center">
-                {searchTerm || selectedGroup !== 'all'
+                {searchTerm || selectedGroup !== 'all' || selectedDateFilter !== 'all'
                   ? 'Tente ajustar os filtros para encontrar resumos'
                   : 'Os resumos aparecerão aqui quando forem gerados para seus grupos'
                 }
@@ -278,10 +294,6 @@ export default function SummariesPage() {
                       <div className="flex items-center space-x-1">
                         <MessageSquare className="h-4 w-4" />
                         <span>{summary.message_count} mensagens</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4" />
-                        <span>Criado em {formatDate(summary.created_at)}</span>
                       </div>
                     </div>
                   </div>

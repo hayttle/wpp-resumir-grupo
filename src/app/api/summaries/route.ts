@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
     // Buscar parâmetros de query
     const { searchParams } = new URL(request.url)
     const groupId = searchParams.get('group_id')
+    const dateFilter = searchParams.get('date_filter') // 'today', 'last_7_days', 'all'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = (page - 1) * limit
@@ -64,6 +65,23 @@ export async function GET(request: NextRequest) {
       query = query.eq('group_selection_id', groupId)
     }
 
+    // Filtrar por data se especificado
+    if (dateFilter && dateFilter !== 'all') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (dateFilter === 'today') {
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        query = query.gte('date', today.toISOString().split('T')[0])
+        query = query.lt('date', tomorrow.toISOString().split('T')[0])
+      } else if (dateFilter === 'last_7_days') {
+        const sevenDaysAgo = new Date(today)
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        query = query.gte('date', sevenDaysAgo.toISOString().split('T')[0])
+      }
+    }
+
     // Aplicar paginação
     query = query.range(offset, offset + limit - 1)
 
@@ -82,6 +100,23 @@ export async function GET(request: NextRequest) {
 
     if (groupId) {
       countQuery = countQuery.eq('group_selection_id', groupId)
+    }
+
+    // Aplicar filtro de data na contagem também
+    if (dateFilter && dateFilter !== 'all') {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      if (dateFilter === 'today') {
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        countQuery = countQuery.gte('date', today.toISOString().split('T')[0])
+        countQuery = countQuery.lt('date', tomorrow.toISOString().split('T')[0])
+      } else if (dateFilter === 'last_7_days') {
+        const sevenDaysAgo = new Date(today)
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+        countQuery = countQuery.gte('date', sevenDaysAgo.toISOString().split('T')[0])
+      }
     }
 
     const { count, error: countError } = await countQuery
