@@ -198,7 +198,10 @@ export default function SubscriptionsPage() {
       {/* Tabela de Assinaturas */}
       <Card>
         <CardHeader>
-          <CardTitle>Assinaturas e Pagamentos</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            Assinaturas e Pagamentos
+          </CardTitle>
           <CardDescription>
             {filteredSubscriptions.length} de {subscriptions.length} assinaturas
           </CardDescription>
