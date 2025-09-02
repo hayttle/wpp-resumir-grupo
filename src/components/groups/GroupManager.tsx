@@ -78,8 +78,8 @@ export default function GroupManager() {
         setSelectedGroups(groupSelections)
       } catch (error) {
         // Fallback: carregar apenas grupos selecionados
-        const groupSelections = await GroupService.getUserGroupSelections()
-        setSelectedGroups(groupSelections)
+      const groupSelections = await GroupService.getUserGroupSelections()
+      setSelectedGroups(groupSelections)
       }
     } catch (error) {
       // Erro silencioso - não mostrar toast para erro de carregamento inicial
@@ -124,6 +124,15 @@ export default function GroupManager() {
   // Estados para filtros dos grupos selecionados
   const [selectedGroupsFilter, setSelectedGroupsFilter] = useState('all') // 'all', 'active', 'inactive'
   const [selectedGroupsSearch, setSelectedGroupsSearch] = useState('')
+
+  // Função para identificar grupos com pagamentos pendentes
+  const getGroupsWithPendingPayments = () => {
+    return selectedGroups.filter(group => 
+      group.payments && group.payments.some(payment => 
+        payment.status === 'PENDING' || payment.status === 'OVERDUE'
+      )
+    )
+  }
 
   // Função para recalcular a capacidade de seleção de grupos baseada no estado local
   const recalculateSelectionCapability = useCallback(() => {
@@ -396,8 +405,8 @@ export default function GroupManager() {
 
           if (!reactivateResponse.ok) {
             throw new Error('Erro ao reativar assinatura')
-          }
-        } catch (error) {
+      }
+    } catch (error) {
           console.error('Erro ao reativar assinatura:', error)
           // Continuar mesmo se falhar a reativação da assinatura
         }
@@ -828,12 +837,78 @@ export default function GroupManager() {
               </div>
             </div>
           )}
-
-
-
-
         </CardContent>
       </Card>
+
+      {/* Alerta de Pagamentos Pendentes */}
+      {getGroupsWithPendingPayments().length > 0 && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-800">
+              <AlertCircle className="h-5 w-5" />
+              Pagamentos Pendentes
+            </CardTitle>
+            <CardDescription className="text-orange-700">
+              Você tem {getGroupsWithPendingPayments().length} grupo(s) com pagamentos pendentes que precisam de atenção
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {getGroupsWithPendingPayments().map((group) => {
+                const pendingPayments = group.payments?.filter(payment => 
+                  payment.status === 'PENDING' || payment.status === 'OVERDUE'
+                ) || []
+                
+                return (
+                  <div key={group.id} className="p-3 bg-white border border-orange-200 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-orange-600" />
+                        <span className="font-medium text-gray-900">{group.group_name}</span>
+                      </div>
+                      <Badge variant="outline" className="border-orange-300 text-orange-700">
+                        {pendingPayments.length} pagamento(s) pendente(s)
+                      </Badge>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      {pendingPayments.map((payment) => (
+                        <div key={payment.id} className="flex items-center justify-between p-2 bg-orange-50 rounded border border-orange-100">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-orange-600" />
+                              <span className="text-sm font-medium">{formatCurrency(payment.value)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-orange-600" />
+                              <span className="text-sm text-gray-600">Vence: {formatDate(payment.due_date)}</span>
+                            </div>
+                            <Badge 
+                              className={`text-xs ${
+                                payment.status === 'OVERDUE' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+                              }`}
+                            >
+                              {translateStatus(payment.status)}
+                            </Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="text-xs px-3 py-1 h-7"
+                            onClick={() => handlePayPayment(payment)}
+                          >
+                            PAGAR
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Grupos Encontrados */}
       {groups.length > 0 && (
@@ -883,15 +958,15 @@ export default function GroupManager() {
                   <div className="ml-4">
                     {!group.isSelected ? (
                       canSelectNewGroups ? (
-                        <Button
-                          onClick={() => selectGroup(group)}
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Plus className="h-4 w-4" />
-                          Selecionar
-                        </Button>
+                      <Button
+                        onClick={() => selectGroup(group)}
+                        variant="outline"
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Selecionar
+                      </Button>
                       ) : (
                         <div className="text-center">
                           <Badge variant="secondary" className="bg-gray-100 text-gray-500">
@@ -1018,9 +1093,9 @@ export default function GroupManager() {
                   <Users className="h-5 w-5" />
                   Grupos Selecionados ({filteredSelectedGroups.length} de {selectedGroups.length})
                 </CardTitle>
-                <CardDescription>
-                  Estes grupos serão monitorados para resumos automáticos
-                </CardDescription>
+            <CardDescription>
+              Estes grupos serão monitorados para resumos automáticos
+            </CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -1155,12 +1230,12 @@ export default function GroupManager() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <div className="flex items-center gap-2">
                                 <DollarSign className="h-4 w-4 text-green-600" />
-                                <div>
+                  <div>
                                   <p className="text-sm text-gray-600">Valor</p>
                                   <p className="font-semibold text-lg">
                                     {formatCurrency(selection.subscription.value || 0)}
-                                  </p>
-                                </div>
+                    </p>
+                  </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4 text-green-600" />
@@ -1276,13 +1351,13 @@ export default function GroupManager() {
                                             }`}
                                         >
                                           {translateStatus(payment.status)}
-                                        </Badge>
+                    </Badge>
                                       </div>
 
                                       {/* Ações */}
                                       <div className="col-span-3">
                                         {(payment.status === 'PENDING' || payment.status === 'OVERDUE') ? (
-                                          <Button
+                    <Button
                                             size="sm"
                                             variant="destructive"
                                             className="text-xs px-3 py-1 h-7"
@@ -1292,20 +1367,20 @@ export default function GroupManager() {
                                           </Button>
                                         ) : (payment.status === 'CONFIRMED' || payment.status === 'RECEIVED') && payment.transaction_receipt_url ? (
                                           <Button
-                                            variant="outline"
-                                            size="sm"
+                      variant="outline"
+                      size="sm"
                                             className="text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-300 text-xs px-3 py-1 h-7"
                                             onClick={() => window.open(payment.transaction_receipt_url, '_blank')}
-                                          >
+                    >
                                             Ver comprovante
-                                          </Button>
+                    </Button>
                                         ) : (
                                           <span className="text-xs text-gray-400">-</span>
                                         )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
+                  </div>
+                </div>
+              ))}
+            </div>
                               </div>
                             </div>
                           )}
