@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
+import { ConfirmationModal } from '@/components/ui/confirmation-modal'
 import { SummaryService, SummaryWithGroup } from '@/lib/services/summaryService'
 import { GroupService } from '@/lib/services/groupService'
 import { formatDate } from '@/lib/utils/formatters'
@@ -19,7 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react'
 
 export default function SummariesPage() {
@@ -31,6 +33,9 @@ export default function SummariesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalSummaries, setTotalSummaries] = useState(0)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [summaryToDelete, setSummaryToDelete] = useState<SummaryWithGroup | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const { addToast } = useToast()
 
   const limit = 10
@@ -101,6 +106,62 @@ export default function SummariesPage() {
     setSearchTerm('')
     setSelectedGroup('all')
     setCurrentPage(1)
+  }
+
+  // Função para abrir modal de exclusão
+  const handleDeleteClick = (summary: SummaryWithGroup) => {
+    setSummaryToDelete(summary)
+    setDeleteModalOpen(true)
+  }
+
+  // Função para confirmar exclusão
+  const handleConfirmDelete = async () => {
+    if (!summaryToDelete) return
+
+    try {
+      setDeleting(true)
+      const response = await fetch(`/api/summaries/${summaryToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Erro ao excluir resumo')
+      }
+
+      // Remover o resumo da lista local
+      setSummaries(prev => prev.filter(s => s.id !== summaryToDelete.id))
+      setTotalSummaries(prev => prev - 1)
+
+      addToast({
+        type: 'success',
+        title: 'Sucesso',
+        message: 'Resumo excluído com sucesso'
+      })
+
+      // Fechar modal
+      setDeleteModalOpen(false)
+      setSummaryToDelete(null)
+
+    } catch (error) {
+      console.error('Erro ao excluir resumo:', error)
+      addToast({
+        type: 'error',
+        title: 'Erro',
+        message: error instanceof Error ? error.message : 'Erro ao excluir resumo'
+      })
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Função para cancelar exclusão
+  const handleCancelDelete = () => {
+    setDeleteModalOpen(false)
+    setSummaryToDelete(null)
   }
 
   return (
@@ -224,12 +285,22 @@ export default function SummariesPage() {
                       </div>
                     </div>
                   </div>
-                  {summary.sent && (
-                    <div className="flex items-center space-x-1 text-green-600">
-                      <Send className="h-4 w-4" />
-                      <span className="text-sm font-medium">Enviado</span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {summary.sent && (
+                      <div className="flex items-center space-x-1 text-green-600">
+                        <Send className="h-4 w-4" />
+                        <span className="text-sm font-medium">Enviado</span>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteClick(summary)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -274,6 +345,19 @@ export default function SummariesPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={handleCancelDelete}
+        onConfirm={handleConfirmDelete}
+        title="Excluir Resumo"
+        description={`Tem certeza que deseja excluir o resumo do grupo "${summaryToDelete?.group_selections.group_name}"? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={deleting}
+      />
     </div>
   )
 }
