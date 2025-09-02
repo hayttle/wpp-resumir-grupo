@@ -32,10 +32,8 @@ export async function GET(request: NextRequest) {
 
     // Verificar autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    console.log('🔍 Debug - User auth:', { user: user?.id, error: authError })
     
     if (authError || !user) {
-      console.log('❌ Auth failed:', authError)
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
@@ -47,7 +45,6 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit
 
     // Construir query base
-    console.log('🔍 Debug - Building query for user:', user.id)
     let query = supabase
       .from('summaries')
       .select(`
@@ -71,12 +68,6 @@ export async function GET(request: NextRequest) {
     query = query.range(offset, offset + limit - 1)
 
     const { data: summaries, error } = await query
-
-    console.log('🔍 Debug - Query result:', { 
-      summariesCount: summaries?.length || 0, 
-      error: error?.message,
-      summaries: summaries?.map(s => ({ id: s.id, user_id: s.user_id, group_selection_id: s.group_selection_id }))
-    })
 
     if (error) {
       console.error('Erro ao buscar resumos:', error)

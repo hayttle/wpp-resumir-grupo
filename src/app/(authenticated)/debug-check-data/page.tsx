@@ -87,7 +87,7 @@ export default function DebugCheckDataPage() {
           {data && (
             <div className="mt-4 space-y-4">
               <h3 className="font-semibold">Resultado da Verificação:</h3>
-              
+
               {data.debug && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-4 bg-green-50 rounded-lg">
@@ -129,7 +129,7 @@ export default function DebugCheckDataPage() {
               <strong className="text-yellow-800">⚠️ Resumos sem User ID:</strong> Resumos que não têm user_id preenchido
             </div>
           </div>
-          
+
           <div className="mt-4 p-4 bg-gray-50 rounded-lg">
             <h4 className="font-semibold mb-2">Possíveis Soluções:</h4>
             <ul className="list-disc list-inside space-y-1 text-sm">
