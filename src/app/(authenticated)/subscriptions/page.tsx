@@ -237,13 +237,14 @@ export default function SubscriptionsPage() {
                     <div className="space-y-2">
                       <h4 className="font-medium text-sm text-muted-foreground mb-2">Pagamentos:</h4>
                       <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
+                        <table className="w-full text-sm table-fixed">
                           <thead>
                             <tr className="border-b">
-                              <th className="text-left py-2">Valor</th>
-                              <th className="text-left py-2">Vencimento</th>
-                              <th className="text-left py-2">Status</th>
-                              <th className="text-left py-2">Ações</th>
+                              <th className="text-left py-2 w-24">Valor</th>
+                              <th className="text-left py-2 w-28">Vencimento</th>
+                              <th className="text-left py-2 w-28">Pagamento</th>
+                              <th className="text-left py-2 w-24">Status</th>
+                              <th className="text-left py-2 w-32">Ações</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -260,6 +261,16 @@ export default function SubscriptionsPage() {
                                     <Calendar className="h-4 w-4 text-blue-600" />
                                     <span>{formatDate(payment.due_date)}</span>
                                   </div>
+                                </td>
+                                <td className="py-2">
+                                  {payment.payment_date ? (
+                                    <div className="flex items-center gap-2">
+                                      <Calendar className="h-4 w-4 text-green-600" />
+                                      <span>{formatDate(payment.payment_date)}</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400 text-sm">-</span>
+                                  )}
                                 </td>
                                 <td className="py-2">
                                   <Badge className={getStatusColor(payment.status)}>
