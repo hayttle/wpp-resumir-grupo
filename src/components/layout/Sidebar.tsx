@@ -12,7 +12,8 @@ import {
   CreditCard,
   UserCog,
   X,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -52,6 +53,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       href: '/groups',
       icon: <Users className="h-5 w-5" />,
       description: 'Gerenciar grupos e assinaturas'
+    },
+    {
+      label: 'Resumos',
+      href: '/summaries',
+      icon: <FileText className="h-5 w-5" />,
+      description: 'Visualizar resumos gerados'
     }
   ]
 

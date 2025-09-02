@@ -137,6 +137,7 @@ export interface Message {
 
 export interface Summary {
   id: string
+  user_id: string
   group_selection_id: string
   content: string
   message_count: number
