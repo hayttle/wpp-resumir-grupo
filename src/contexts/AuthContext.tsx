@@ -41,8 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log('🔍 AuthContext - Inicializando...')
     // Verificar se o Supabase está configurado
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.log('❌ AuthContext - Supabase não configurado')
       setError('Supabase não está configurado. Verifique as variáveis de ambiente.')
       setLoading(false)
       return
@@ -51,7 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Buscar sessão atual
     const getSession = async () => {
       try {
+        console.log('🔍 AuthContext - Buscando sessão...')
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        console.log('🔍 AuthContext - Sessão encontrada:', { session: !!session, error: sessionError?.message })
 
         if (sessionError) {
           console.error('Erro ao buscar sessão:', sessionError)
