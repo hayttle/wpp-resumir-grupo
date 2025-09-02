@@ -78,7 +78,7 @@ Poderia me ajudar?`
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-8">
                 {/* Formulário */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Descreva seu Problema</h3>
@@ -125,7 +125,7 @@ Poderia me ajudar?`
                 </div>
 
                 {/* Contato Direto */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Contato Direto</h3>
 
                   <div className="space-y-4">
