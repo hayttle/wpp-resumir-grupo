@@ -58,14 +58,13 @@ export async function POST(request: NextRequest) {
     }
 
     const hasAccess = await AsaasSubscriptionService.canAccessGroup(user.id, groupId)
-    const accessibleGroups = await AsaasSubscriptionService.getUserAccessibleGroups(user.id)
-    const groupCount = await AsaasSubscriptionService.getUserGroupCount(user.id)
+    const userSubscriptions = await AsaasSubscriptionService.getUserSubscriptions(user.id)
+    const activeSubscriptions = userSubscriptions.filter(sub => sub.status === 'active')
 
     return NextResponse.json({
       hasAccess,
       groupId,
-      accessibleGroups,
-      totalActiveSubscriptions: groupCount
+      totalActiveSubscriptions: activeSubscriptions.length
     })
 
   } catch (error) {
@@ -88,15 +87,12 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const accessibleGroups = await AsaasSubscriptionService.getUserAccessibleGroups(user.id)
-    const activeSubscriptions = await AsaasSubscriptionService.getActiveSubscriptions(user.id)
-    const groupCount = await AsaasSubscriptionService.getUserGroupCount(user.id)
+    const userSubscriptions = await AsaasSubscriptionService.getUserSubscriptions(user.id)
+    const activeSubscriptions = userSubscriptions.filter(sub => sub.status === 'active')
 
     return NextResponse.json({
-      accessibleGroups,
-      activeSubscriptions,
-      totalActiveSubscriptions: groupCount,
-      hasAnyAccess: groupCount > 0
+      totalActiveSubscriptions: activeSubscriptions.length,
+      hasAnyAccess: activeSubscriptions.length > 0
     })
 
   } catch (error) {

@@ -46,8 +46,7 @@ export class GroupService {
       return {
         groups: result.groups || [],
         canSelectNewGroups: result.canSelectNewGroups || false,
-        reason: result.reason,
-        maxGroups: result.maxGroups
+        reason: result.reason
       }
     } catch (error) {
       console.error('❌ GroupService: Erro ao buscar grupos:', error)

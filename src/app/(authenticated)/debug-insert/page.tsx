@@ -101,7 +101,7 @@ export default function DebugInsertPage() {
         </CardHeader>
         <CardContent>
           <ol className="list-decimal list-inside space-y-2 text-sm">
-            <li>Clique em "Inserir Resumo de Teste" para criar dados de teste</li>
+            <li>Clique em &quot;Inserir Resumo de Teste&quot; para criar dados de teste</li>
             <li>Após inserir, acesse a página <code className="bg-gray-100 px-2 py-1 rounded">/summaries</code></li>
             <li>Verifique se o resumo aparece na lista</li>
             <li>Teste os filtros e funcionalidades da página</li>

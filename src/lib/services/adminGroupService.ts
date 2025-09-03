@@ -216,7 +216,7 @@ export class AdminGroupService {
         throw new Error('Falha ao buscar estatísticas')
       }
 
-      const groupsByUser = [...new Set(uniqueUsers?.map(g => g.user_id) || [])].length
+      const groupsByUser = Array.from(new Set(uniqueUsers?.map(g => g.user_id) || [])).length
 
       return {
         totalGroups: totalGroups || 0,

@@ -220,7 +220,7 @@ export default function AdminGroupsManager() {
   const totalGroups = groups.length
   const activeGroups = groups.filter(g => g.active).length
   const inactiveGroups = totalGroups - activeGroups
-  const groupsByUser = [...new Set(groups.map(g => g.user_id))].length
+  const groupsByUser = Array.from(new Set(groups.map(g => g.user_id))).length
 
   return (
     <div className="space-y-6">
